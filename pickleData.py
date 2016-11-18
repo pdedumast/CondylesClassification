@@ -18,7 +18,7 @@ if train_folders.count(str(location) + ".DS_Store"):
 
 test_folders = train_folders
 
-nbPoints = 1000  # Pixel width and height.
+nbPoints = 1000  
 nbFeatures = 6
 pixel_depth = 255.0  # Number of levels per pixel.
 
@@ -34,6 +34,10 @@ pixel_depth = 255.0  # Number of levels per pixel.
 def load_features(folder, min_num_shapes):
     """Load the data for one class of condyles."""
     vtk_filenames = os.listdir(folder)      # Juste le nom du vtk file
+
+    print "folder : " + folder
+    
+
 
     # Delete .DS_Store file if there is one
     if vtk_filenames.count(".DS_Store"):
@@ -229,6 +233,31 @@ def randomize(dataset, labels):
 train_dataset, train_labels = randomize(train_dataset, train_labels)
 test_dataset, test_labels = randomize(test_dataset, test_labels)
 valid_dataset, valid_labels = randomize(valid_dataset, valid_labels)
+
+
+# --------------------------------------------------------------------------------------------------- #
+# Save the data for later reuse
+
+pickle_file = 'condyles.pickle'
+
+try:
+    f = open(pickle_file, 'wb')
+    save = {
+        'train_dataset': train_dataset,
+        'train_labels': train_labels,
+        'valid_dataset': valid_dataset,
+        'valid_labels': valid_labels,
+        'test_dataset': test_dataset,
+        'test_labels': test_labels,
+    }
+    pickle.dump(save, f, pickle.HIGHEST_PROTOCOL)
+    f.close()
+except Exception as e:
+    print('Unable to save data to', pickle_file, ':', e)
+    raise
+
+statinfo = os.stat(pickle_file)
+print('Compressed pickle size:', statinfo.st_size)
 
 
 
