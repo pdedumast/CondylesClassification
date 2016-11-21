@@ -60,8 +60,8 @@ def sortData(inputDir, outputDir, mappedSphere):
 # 																						#
 # ------------------------------------------------------------------------------------- #
 
-spharmDir = "/Users/prisgdd/Desktop/TestPipeline/outputSPHARM/Mesh/SPHARM"
-groupsDir = "/Users/prisgdd/Desktop/TestPipeline/inputGroups"
+spharmDir = "/Users/prisgdd/Desktop/Pipeline/outputSPHARM2/Mesh/SPHARM"
+groupsDir = "/Users/prisgdd/Desktop/Pipeline/inputGroups"
 mappedSphere = True
 
 

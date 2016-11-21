@@ -9,7 +9,7 @@ import vtk
 # --------------------------------------------------------------------------------------------------- #
 
 # Location for each group files
-location = "/Users/prisgdd/Documents/Projects/CNN/DataOutput/"
+location = "/Users/prisgdd/Documents/Projects/CNN/outputVTK-CondFeatExt/"
 train_folders = [os.path.join(location, d) for d in sorted(os.listdir(location))]       # Folder class liste
 
 # Delete .DS_Store file if there is one
@@ -20,8 +20,6 @@ test_folders = train_folders
 
 nbPoints = 1000  
 nbFeatures = 6
-pixel_depth = 255.0  # Number of levels per pixel.
-
 
 # --------------------------------------------------------------------------------------------------- #
 
@@ -36,7 +34,7 @@ def load_features(folder, min_num_shapes):
     vtk_filenames = os.listdir(folder)      # Juste le nom du vtk file
 
     print "folder : " + folder
-    
+
 
 
     # Delete .DS_Store file if there is one
@@ -146,7 +144,7 @@ def maybe_pickle(data_folders, min_num_shapes_per_class, force=False):
 
 # --------------------------------------------------------------------------------------------------- #
 
-train_datasets = maybe_pickle(train_folders, 10)
+train_datasets = maybe_pickle(train_folders, 9)
 test_datasets = maybe_pickle(test_folders, 5)
 
 
@@ -205,8 +203,9 @@ def merge_datasets(pickle_files, train_size, valid_size=0):
 # --------------------------------------------------------------------------------------------------- #
 
 train_size = 35
-valid_size = 10
-test_size = 10
+valid_size = 12
+
+test_size = 40
 
 valid_dataset, valid_labels, train_dataset, train_labels = merge_datasets(train_datasets, train_size, valid_size)
 _, _, test_dataset, test_labels = merge_datasets(test_datasets, test_size)

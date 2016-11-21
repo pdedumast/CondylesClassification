@@ -6,8 +6,8 @@ import subprocess
 
 CondylesFeaturesExtractor = "/Users/prisgdd/Documents/Projects/CNN/CondylesFeaturesExtractor-build/src/bin/condylesfeaturesextractor"
 
-meshDir = "/Users/prisgdd/Desktop/TestPipeline/outputSurfRemesh"
-outputDir = "/Users/prisgdd/Desktop/TestPipeline/outputCondylesFeaturesExtractor"
+meshDir = "/Users/prisgdd/Documents/Projects/CNN/DataVTK/ControlGroup"
+outputDir = "/Users/prisgdd/Documents/Projects/CNN/outputVTK-CondFeatExt/ControlGroup"
 
 # Verify directory integrity
 if not os.path.isdir(meshDir) or not os.path.isdir(outputDir):
