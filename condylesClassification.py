@@ -71,10 +71,11 @@ def accuracy(predictions, labels):
 # 1-hidden layer
 # 1024 hidden nodes
 # 
-
+learning_rate = 0.005
 batch_size = 15
 nb_hidden_layers = 1024
-patch_size  = 5 
+patch_size1  = 5
+patch_size2  = 3
 nbFilterLayer = 16
 
 
@@ -98,32 +99,64 @@ with graph.as_default():
 		return tf.Variable(initial)
 
 	# Variables.
-	W_conv1 = weight_variable([patch_size, patch_size, nbChannels, nbFilterLayer])
-	B_conv1 = bias_variable([nbFilterLayer])
+	W_conv1 = weight_variable([patch_size1, patch_size1, nbChannels, nbFilterLayer])
+	b_conv1 = bias_variable([nbFilterLayer])
+
+	W_conv2 = weight_variable([patch_size2, patch_size2, nbFilterLayer, nbFilterLayer])
+	b_conv2 = bias_variable([nbFilterLayer])	
 
 	# W_fc1h = weight_variable([nbPoints * nbFeatures * nbFilterLayer, nb_hidden_layers])
-	# B_fc1h = bias_variable([nb_hidden_layers])
+	# b_fc1h = bias_variable([nb_hidden_layers])
 
 	# W_fc1 = weight_variable([nb_hidden_layers, nbLabels])
-	# B_fc1 = bias_variable([nbLabels])
+	# b_fc1 = bias_variable([nbLabels])
 	
-	W_fc1 = weight_variable([nbPoints * nbFeatures * nbFilterLayer, nbLabels])
-	B_fc1 = bias_variable([nbLabels])
+	W_fc1 = weight_variable([nbPoints // 4 * nbFeatures // 2 * nbFilterLayer, nbLabels])
+	b_fc1 = bias_variable([nbLabels])
+
+	def conv2d(x, W):
+		return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
+
+	def max_pool_2x2(x):
+		return tf.nn.max_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+
+	def max_pool_2x1(x):
+		return tf.nn.max_pool(x, ksize=[1, 2, 1, 1], strides=[1, 2, 1, 1], padding='SAME')
 
 
 	# Model.
 	def model(data):
 		with tf.name_scope('Conv1'):
-			h_conv1 = tf.nn.conv2d(data, W_conv1, [1, 1, 1, 1], padding='SAME')
-			h_relu1 = tf.nn.relu(h_conv1 + B_conv1)
+			h_conv1 = conv2d(data, W_conv1)
+			h_relu1 = tf.nn.relu(h_conv1 + b_conv1)
 
-			print "\nInput dimension Conv1: " + str(data.get_shape())
-			print "Output dimension Conv1: " + str(h_relu1.get_shape())
+			print "\nInput dimension Conv 1: " + str(data.get_shape())
+			print "Output dimension Conv 1: " + str(h_relu1.get_shape())
+
+		with tf.name_scope('MaxPooling1'):
+			h_maxpool1 = max_pool_2x2(h_relu1)
+
+			print "\nInput dimension Max-Pooling 1: " + str(h_relu1.get_shape())
+			print "Output dimension Max-Pooling 1: " + str(h_maxpool1.get_shape())
+
+		with tf.name_scope('Conv2'):
+			h_conv2 = conv2d(h_maxpool1, W_conv2)
+			h_relu2 = tf.nn.relu(h_conv2 + b_conv2)
+
+			print "\nInput dimension Conv 2: " + str(h_maxpool1.get_shape())
+			print "Output dimension Conv 2: " + str(h_conv2.get_shape())
+
+		with tf.name_scope('MaxPooling2'):
+			h_maxpool2 = max_pool_2x1(h_relu2)
+
+			print "\nInput dimension Max-Pooling 2: " + str(h_relu2.get_shape())
+			print "Output dimension Max-Pooling 2: " + str(h_maxpool2.get_shape())
+
 
 		with tf.name_scope('FullyConnected1'):
 
-			shape = h_relu1.get_shape().as_list()
-			reshape = tf.reshape(h_relu1, [shape[0], shape[1] * shape[2] * shape[3]])
+			shape = h_maxpool2.get_shape().as_list()
+			reshape = tf.reshape(h_maxpool2, [shape[0], shape[1] * shape[2] * shape[3]])
 
 			# h_relu2 = tf.nn.relu(tf.matmul(reshape, W_fc1h) + B_fc1h)
 			# output = tf.matmul(h_relu2, W_fc1) + B_fc1
@@ -132,10 +165,10 @@ with graph.as_default():
 			# print "Hidden dimension FC1: " + str(h_relu2.get_shape())
 			# print "Output dimension FC1: " + str(output.get_shape())
 
-			output = tf.matmul(reshape, W_fc1) + B_fc1
-			print ""
-			print "Input dimension FC1: " + str(h_relu1.get_shape())
-			print "Output dimension FC1: " + str(output.get_shape())
+			output = tf.matmul(reshape, W_fc1) + b_fc1
+
+			print "\nInput dimension FC 1: " + str(h_maxpool2.get_shape())
+			print "Output dimension FC 1: " + str(output.get_shape())
 
 		return output
 
@@ -144,8 +177,8 @@ with graph.as_default():
 	loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits, tf_train_labels))
 
 	# Optimizer.
-	# optimizer = tf.train.GradientDescentOptimizer(0.005).minimize(loss)
-	optimizer = tf.train.AdagradOptimizer(0.0005).minimize(loss)
+	# optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
+	optimizer = tf.train.AdagradOptimizer(learning_rate).minimize(loss)
 
 	# Predictions for the training, validation, and test data.
 	train_prediction = tf.nn.softmax(logits)
