@@ -72,7 +72,7 @@ def accuracy(predictions, labels):
 # 1024 hidden nodes
 # 
 
-batch_size = 4
+batch_size = 15
 nb_hidden_layers = 1024
 patch_size  = 5 
 nbFilterLayer = 16
@@ -144,7 +144,8 @@ with graph.as_default():
 	loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits, tf_train_labels))
 
 	# Optimizer.
-	optimizer = tf.train.GradientDescentOptimizer(0.005).minimize(loss)
+	# optimizer = tf.train.GradientDescentOptimizer(0.005).minimize(loss)
+	optimizer = tf.train.AdagradOptimizer(0.0005).minimize(loss)
 
 	# Predictions for the training, validation, and test data.
 	train_prediction = tf.nn.softmax(logits)
