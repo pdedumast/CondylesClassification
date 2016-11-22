@@ -104,15 +104,12 @@ with graph.as_default():
 
 	W_conv2 = weight_variable([patch_size2, patch_size2, nbFilterLayer, nbFilterLayer])
 	b_conv2 = bias_variable([nbFilterLayer])	
-
-	# W_fc1h = weight_variable([nbPoints * nbFeatures * nbFilterLayer, nb_hidden_layers])
-	# b_fc1h = bias_variable([nb_hidden_layers])
-
-	# W_fc1 = weight_variable([nb_hidden_layers, nbLabels])
-	# b_fc1 = bias_variable([nbLabels])
 	
-	W_fc1 = weight_variable([nbPoints // 4 * nbFeatures // 2 * nbFilterLayer, nbLabels])
-	b_fc1 = bias_variable([nbLabels])
+	W_fc1 = weight_variable([nbPoints // 4 * nbFeatures // 2 * nbFilterLayer, nb_hidden_layers])
+	b_fc1 = bias_variable([nb_hidden_layers])
+
+	W_fc2 = weight_variable([nb_hidden_layers, nbLabels])
+	b_fc2 = bias_variable([nbLabels])
 
 	def conv2d(x, W):
 		return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
@@ -165,12 +162,20 @@ with graph.as_default():
 			# print "Hidden dimension FC1: " + str(h_relu2.get_shape())
 			# print "Output dimension FC1: " + str(output.get_shape())
 
-			output = tf.matmul(reshape, W_fc1) + b_fc1
+			h_fc1 = tf.matmul(reshape, W_fc1) + b_fc1
+			h_relu3 = tf.nn.relu(h_fc1)
 
 			print "\nInput dimension FC 1: " + str(h_maxpool2.get_shape())
-			print "Output dimension FC 1: " + str(output.get_shape())
+			print "Output dimension FC 1: " + str(h_relu3.get_shape())
 
-		return output
+		with tf.name_scope('FullyConnected1'):
+
+			h_fc2 = tf.matmul(h_relu3, W_fc2) + b_fc2
+
+			print "\nInput dimension FC 2: " + str(h_relu3.get_shape())
+			print "Output dimension FC 2: " + str(h_fc2.get_shape())
+
+		return h_fc2
 
 	# Training computation.
 	logits = model(tf_train_dataset)
