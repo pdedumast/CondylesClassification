@@ -19,7 +19,7 @@ if train_folders.count(str(location) + ".DS_Store"):
 test_folders = train_folders
 
 nbPoints = 1000  
-nbFeatures = 6
+nbFeatures = 3
 
 # --------------------------------------------------------------------------------------------------- #
 
@@ -88,14 +88,20 @@ def load_features(folder, min_num_shapes):
             currentData = np.ndarray(shape=(nbPoints, nbFeatures), dtype=np.float32)
             for i in range(0, nbPoints):
 
-                # Stock position in currentData - Normalization
-                for numComponent in range(0, nbCompPosition):
-                    value = positionArray.GetComponent(i, numComponent)
-                    currentData[i, numComponent] = 2 * (value - positionMin) / positionDepth - 1
+                if nbFeatures == 6:
+                    # Stock position in currentData - Normalization
+                    for numComponent in range(0, nbCompPosition):
+                        value = positionArray.GetComponent(i, numComponent)
+                        currentData[i, numComponent] = 2 * (value - positionMin) / positionDepth - 1
 
-                # Stock normals in currentData
-                for numComponent in range(0, nbCompNormal):
-                    currentData[i, numComponent + nbCompPosition] = normalArray.GetComponent(i, numComponent)
+                    # Stock normals in currentData
+                    for numComponent in range(0, nbCompNormal):
+                        currentData[i, numComponent + nbCompPosition] = normalArray.GetComponent(i, numComponent)
+                
+                elif nbFeatures == 3:
+                    # Stock normals in currentData
+                    for numComponent in range(0, nbCompNormal):
+                        currentData[i, numComponent] = normalArray.GetComponent(i, numComponent)
 
             # Stack the current finished data in dataset
             dataset[num_shapes, :, :] = currentData
@@ -202,10 +208,10 @@ def merge_datasets(pickle_files, train_size, valid_size=0):
 
 # --------------------------------------------------------------------------------------------------- #
 
-train_size = 35
-valid_size = 12
+train_size = 60
+valid_size = 22
 
-test_size = 40
+test_size = 45
 
 valid_dataset, valid_labels, train_dataset, train_labels = merge_datasets(train_datasets, train_size, valid_size)
 _, _, test_dataset, test_labels = merge_datasets(test_datasets, test_size)
