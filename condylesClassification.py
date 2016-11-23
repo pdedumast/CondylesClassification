@@ -33,13 +33,13 @@ with open(pickle_file, 'rb') as f:
 #   - labels as float 1-hot encodings
 
 nbPoints = 1000  
-nbFeatures = 6
+nbFeatures = 3
 nbLabels = 2
 nbChannels = 1	# Input depth
 
 
 def reformat(dataset, labels):
-	dataset = dataset.reshape((-1, nbPoints, nbFeatures, nbChannels)).astype(np.float32)
+	dataset = dataset.reshape((-1, nbPoints * nbFeatures)).astype(np.float32)
 	labels = (np.arange(nbLabels) == labels[:,None]).astype(np.float32)
 	return dataset, labels
 
@@ -67,22 +67,19 @@ def accuracy(predictions, labels):
 # 																				#
 # ----------------------------------------------------------------------------- #
 # 
-# SGD
-# 1-hidden layer
-# 1024 hidden nodes
-# 
-learning_rate = 0.005
-batch_size = 15
-nb_hidden_layers = 1024
-patch_size1  = 5
-patch_size2  = 3
-nbFilterLayer = 16
+
+learning_rate = 0.0005
+batch_size = 10
+nb_hidden_layers_1 = 512
+nb_hidden_layers_2 = 1024
+nb_hidden_layers_3 = 1024
+nb_hidden_layers_4 = 512
 
 
 graph = tf.Graph()
 with graph.as_default():
 	# Input data.
-	tf_train_dataset = tf.placeholder(tf.float32, shape=(batch_size, nbPoints, nbFeatures, nbChannels))
+	tf_train_dataset = tf.placeholder(tf.float32, shape=(batch_size, nbPoints * nbFeatures))
 	tf_train_labels = tf.placeholder(tf.float32, shape=(batch_size, nbLabels))
 
 	tf_valid_dataset = tf.constant(valid_dataset)
@@ -98,84 +95,64 @@ with graph.as_default():
 		initial = tf.constant(0.1, shape=shape)
 		return tf.Variable(initial)
 
-	# Variables.
-	W_conv1 = weight_variable([patch_size1, patch_size1, nbChannels, nbFilterLayer])
-	b_conv1 = bias_variable([nbFilterLayer])
+	W_fc1 = weight_variable([nbPoints * nbFeatures, nb_hidden_layers_1])
+	b_fc1 = bias_variable([nb_hidden_layers_1])
 
-	W_conv2 = weight_variable([patch_size2, patch_size2, nbFilterLayer, nbFilterLayer])
-	b_conv2 = bias_variable([nbFilterLayer])	
-	
-	W_fc1 = weight_variable([nbPoints // 4 * nbFeatures // 2 * nbFilterLayer, nb_hidden_layers])
-	b_fc1 = bias_variable([nb_hidden_layers])
+	W_fc2 = weight_variable([nb_hidden_layers_1, nb_hidden_layers_2])
+	b_fc2 = bias_variable([nb_hidden_layers_2])
 
-	W_fc2 = weight_variable([nb_hidden_layers, nbLabels])
-	b_fc2 = bias_variable([nbLabels])
+	W_fc3 = weight_variable([nb_hidden_layers_2, nb_hidden_layers_3])
+	b_fc3 = bias_variable([nb_hidden_layers_3])
 
-	def conv2d(x, W):
-		return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
+	W_fc4 = weight_variable([nb_hidden_layers_3, nb_hidden_layers_4])
+	b_fc4 = bias_variable([nb_hidden_layers_4])
 
-	def max_pool_2x2(x):
-		return tf.nn.max_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
-
-	def max_pool_2x1(x):
-		return tf.nn.max_pool(x, ksize=[1, 2, 1, 1], strides=[1, 2, 1, 1], padding='SAME')
-
+	W_fc5 = weight_variable([nb_hidden_layers_4, nbLabels])
+	b_fc5 = bias_variable([nbLabels])
 
 	# Model.
 	def model(data):
-		with tf.name_scope('Conv1'):
-			h_conv1 = conv2d(data, W_conv1)
-			h_relu1 = tf.nn.relu(h_conv1 + b_conv1)
-
-			print "\nInput dimension Conv 1: " + str(data.get_shape())
-			print "Output dimension Conv 1: " + str(h_relu1.get_shape())
-
-		with tf.name_scope('MaxPooling1'):
-			h_maxpool1 = max_pool_2x2(h_relu1)
-
-			print "\nInput dimension Max-Pooling 1: " + str(h_relu1.get_shape())
-			print "Output dimension Max-Pooling 1: " + str(h_maxpool1.get_shape())
-
-		with tf.name_scope('Conv2'):
-			h_conv2 = conv2d(h_maxpool1, W_conv2)
-			h_relu2 = tf.nn.relu(h_conv2 + b_conv2)
-
-			print "\nInput dimension Conv 2: " + str(h_maxpool1.get_shape())
-			print "Output dimension Conv 2: " + str(h_conv2.get_shape())
-
-		with tf.name_scope('MaxPooling2'):
-			h_maxpool2 = max_pool_2x1(h_relu2)
-
-			print "\nInput dimension Max-Pooling 2: " + str(h_relu2.get_shape())
-			print "Output dimension Max-Pooling 2: " + str(h_maxpool2.get_shape())
-
 
 		with tf.name_scope('FullyConnected1'):
 
-			shape = h_maxpool2.get_shape().as_list()
-			reshape = tf.reshape(h_maxpool2, [shape[0], shape[1] * shape[2] * shape[3]])
+			h_fc1 = tf.matmul(data, W_fc1) + b_fc1
+			h_relu1 = tf.nn.relu(h_fc1)
 
-			# h_relu2 = tf.nn.relu(tf.matmul(reshape, W_fc1h) + B_fc1h)
-			# output = tf.matmul(h_relu2, W_fc1) + B_fc1
-			# print ""
-			# print "Input dimension FC1: " + str(h_relu1.get_shape())
-			# print "Hidden dimension FC1: " + str(h_relu2.get_shape())
-			# print "Output dimension FC1: " + str(output.get_shape())
+			# print "\nInput dimension FC 1: " + str(data.get_shape())
+			# print "Output dimension FC 1: " + str(h_relu1.get_shape())
 
-			h_fc1 = tf.matmul(reshape, W_fc1) + b_fc1
-			h_relu3 = tf.nn.relu(h_fc1)
+		with tf.name_scope('FullyConnected2'):
 
-			print "\nInput dimension FC 1: " + str(h_maxpool2.get_shape())
-			print "Output dimension FC 1: " + str(h_relu3.get_shape())
+			h_fc2 = tf.matmul(h_relu1, W_fc2) + b_fc2
+			h_relu2 = tf.nn.relu(h_fc2)
 
-		with tf.name_scope('FullyConnected1'):
+			# print "\nInput dimension FC 2: " + str(h_relu1.get_shape())
+			# print "Output dimension FC 2: " + str(h_relu2.get_shape())
 
-			h_fc2 = tf.matmul(h_relu3, W_fc2) + b_fc2
+		with tf.name_scope('FullyConnected3'):
 
-			print "\nInput dimension FC 2: " + str(h_relu3.get_shape())
-			print "Output dimension FC 2: " + str(h_fc2.get_shape())
+			h_fc3 = tf.matmul(h_relu2, W_fc3) + b_fc3
+			h_relu3 = tf.nn.relu(h_fc3)
 
-		return h_fc2
+			# print "\nInput dimension FC 3: " + str(h_relu2.get_shape())
+			# print "Output dimension FC 3: " + str(h_relu3.get_shape())
+
+		with tf.name_scope('FullyConnected4'):
+
+			h_fc4 = tf.matmul(h_relu3, W_fc4) + b_fc4
+			h_relu4 = tf.nn.relu(h_fc4)
+
+			# print "\nInput dimension FC 4: " + str(h_relu3.get_shape())
+			# print "Output dimension FC 4: " + str(h_relu4.get_shape())
+
+		with tf.name_scope('FullyConnected5'):
+
+			h_fc5 = tf.matmul(h_relu4, W_fc5) + b_fc5
+
+			# print "\nInput dimension FC 5: " + str(h_relu4.get_shape())
+			# print "Output dimension FC 5: " + str(h_fc5.get_shape())
+
+		return h_fc5
 
 	# Training computation.
 	logits = model(tf_train_dataset)
