@@ -33,9 +33,8 @@ with open(pickle_file, 'rb') as f:
 #   - labels as float 1-hot encodings
 
 nbPoints = 1000  
-nbFeatures = 3
-nbLabels = 2
-nbChannels = 1	# Input depth
+nbFeatures = 11
+nbLabels = 8
 
 
 def reformat(dataset, labels):
@@ -68,7 +67,7 @@ def accuracy(predictions, labels):
 # ----------------------------------------------------------------------------- #
 # 
 
-learning_rate = 0.0005
+learning_rate = 0.00005
 batch_size = 10
 nb_hidden_layers_1 = 512
 nb_hidden_layers_2 = 1024
