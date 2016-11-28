@@ -6,8 +6,10 @@ import subprocess
 
 CondylesFeaturesExtractor = "/Users/prisgdd/Documents/Projects/CNN/CondylesFeaturesExtractor-build/src/bin/condylesfeaturesextractor"
 
-meshDir = "/Users/prisgdd/Documents/Projects/CNN/DataVTK/ControlGroup"
-outputDir = "/Users/prisgdd/Documents/Projects/CNN/outputVTK-CondFeatExt/ControlGroup"
+meshDir = "/Users/prisgdd/Documents/Projects/CNN/DataVTK/G07"
+outputDir = "/Users/prisgdd/Documents/Projects/CNN/outputVTK-CondFeatExt/G07"
+meanGroup = "/Users/prisgdd/Documents/Projects/CNN/drive-download-20161123T180828Z"
+
 
 # Verify directory integrity
 if not os.path.isdir(meshDir) or not os.path.isdir(outputDir):
@@ -31,6 +33,9 @@ for i in range(0,len(listMesh)):
 	file.close()
 	command.append("--output")
 	command.append(outputFile)
+
+	command.append("--meanGroup")
+	command.append(meanGroup)	
 
 	subprocess.call(command)
 
