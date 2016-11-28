@@ -19,7 +19,7 @@ if train_folders.count(str(location) + ".DS_Store"):
 test_folders = train_folders
 
 nbPoints = 1000  
-nbFeatures = 3
+nbFeatures = 11
 
 # --------------------------------------------------------------------------------------------------- #
 
@@ -34,8 +34,6 @@ def load_features(folder, min_num_shapes):
     vtk_filenames = os.listdir(folder)      # Juste le nom du vtk file
 
     print "folder : " + folder
-
-
 
     # Delete .DS_Store file if there is one
     if vtk_filenames.count(".DS_Store"):
@@ -67,7 +65,7 @@ def load_features(folder, min_num_shapes):
             positionArray = geometry.GetPointData().GetVectors(positionName)
             nbCompPosition = positionArray.GetElementComponentSize() - 1  # -1 car 4eme comp = 1ere du pt suivant
 
-            # Get position range
+            # Get position range & normalize
             positionRange = positionArray.GetRange()
             positionMin = 1000000
             positionMax = -1000000
@@ -79,6 +77,20 @@ def load_features(folder, min_num_shapes):
                     if value > positionMax:
                         positionMax = value
             positionDepth = positionMax - positionMin
+
+            # Recupere les distances a chaque grp de chq pts
+            nbGroups = 8
+            listGroupMean = list()
+            for i in range(0, nbGroups):
+                name = "distanceGroup" + str(i)
+                temp = geometry.GetPointData().GetScalars(name)
+                temp_range = temp.GetRange()
+                temp_min = temp_range[0]
+                temp_max = temp_range[1]
+                for j in range(0,nbPoints):
+                    temp.SetTuple1(j, 2 * (temp.GetTuple1(j) - temp_min) / (temp_max) - 1)
+                listGroupMean.append(temp)
+
 
             # ***** Get normals (3 useful components) *****
             normalArray = geometry.GetPointData().GetNormals()
@@ -102,6 +114,14 @@ def load_features(folder, min_num_shapes):
                     # Stock normals in currentData
                     for numComponent in range(0, nbCompNormal):
                         currentData[i, numComponent] = normalArray.GetComponent(i, numComponent)
+
+                elif nbFeatures == 11:
+                    # Stock normals in currentData
+                    for numComponent in range(0, nbCompNormal):
+                        currentData[i, numComponent] = normalArray.GetComponent(i, numComponent)
+
+                    for numComponent in range(0, nbGroups):
+                        currentData[i, numComponent + nbCompNormal] = listGroupMean[numComponent].GetTuple1(i)
 
             # Stack the current finished data in dataset
             dataset[num_shapes, :, :] = currentData
