@@ -32,9 +32,26 @@ with open(pickle_file, 'rb') as f:
 #   - data as a flat matrix
 #   - labels as float 1-hot encodings
 
-nbPoints = 1000  
-nbFeatures = 11
-nbLabels = 8
+nbPoints = 1002
+nbFeatures = 15
+nbLabels = 6
+
+# featuresType = "norm"             # "norm" : que les normales, 3 composantes
+# featuresType = "norm-pos"         # "norm-pos" : normales + positions, 6 composantes
+# featuresType = "norm-dist"        # "norm-dist" : normales + distances aux mean. (3+nbGroups) composantes
+featuresType = "norm-dist-curv"     # "norm-dist-curv" : normales + distances aux mean + curvatures. (3+nbGroups+4) composantes
+# featuresType = "norm-curv"        # "norm-curv" : normales + curvatures. (3+4) composantes
+
+if featuresType == "norm":
+    nbFeatures = 3
+elif featuresType == "norm-pos":
+    nbFeatures = 3 + 3
+elif featuresType == "norm-dist":
+    nbFeatures = 3 + nbLabels
+elif featuresType == "norm-dist-curv":
+    nbFeatures = 3 + nbLabels + 4
+elif featuresType == "norm-curv":
+    nbFeatures = 3 + 4 
 
 
 def reformat(dataset, labels):
@@ -59,7 +76,6 @@ def accuracy(predictions, labels):
           / predictions.shape[0])
 
 
-
 # ----------------------------------------------------------------------------- #
 # 																				#
 # 						   Passons aux choses serieuses							#
@@ -67,7 +83,7 @@ def accuracy(predictions, labels):
 # ----------------------------------------------------------------------------- #
 # 
 
-learning_rate = 0.00005
+learning_rate = 0.0005
 batch_size = 10
 nb_hidden_layers_1 = 512
 nb_hidden_layers_2 = 1024
