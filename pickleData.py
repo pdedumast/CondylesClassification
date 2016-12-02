@@ -8,8 +8,33 @@ import vtk
 
 # --------------------------------------------------------------------------------------------------- #
 
+nbPoints = 1002
+nbGroups = 6
+
+# featuresType = "norm"             # "norm" : que les normales, 3 composantes
+# featuresType = "norm-pos"         # "norm-pos" : normales + positions, 6 composantes
+# featuresType = "norm-dist"        # "norm-dist" : normales + distances aux mean. (3+nbGroups) composantes
+featuresType = "norm-dist-curv"     # "norm-dist-curv" : normales + distances aux mean + curvatures. (3+nbGroups+4) composantes
+# featuresType = "norm-curv"        # "norm-curv" : normales + curvatures. (3+4) composantes
+
+if featuresType == "norm":
+    nbFeatures = 3
+elif featuresType == "norm-pos":
+    nbFeatures = 3 + 3
+elif featuresType == "norm-dist":
+    nbFeatures = 3 + nbGroups
+elif featuresType == "norm-dist-curv":
+    nbFeatures = 3 + nbGroups + 4
+elif featuresType == "norm-curv":
+    nbFeatures = 3 + 4 
+# --------------------------------------------------------------------------------------------------- #
+
 # Location for each group files
-location = "/Users/prisgdd/Documents/Projects/CNN/outputVTK-CondFeatExt/"
+if nbGroups == 8:
+    location = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/7Groups-Feat/"
+elif nbGroups == 6:
+    location = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/5Groups-Feat/"
+
 train_folders = [os.path.join(location, d) for d in sorted(os.listdir(location))]       # Folder class liste
 
 # Delete .DS_Store file if there is one
@@ -18,8 +43,6 @@ if train_folders.count(str(location) + ".DS_Store"):
 
 test_folders = train_folders
 
-nbPoints = 1000  
-nbFeatures = 11
 
 # --------------------------------------------------------------------------------------------------- #
 
@@ -53,20 +76,25 @@ def load_features(folder, min_num_shapes):
             reader_poly.Update()
             geometry = reader_poly.GetOutput()
 
-            if geometry.GetNumberOfPoints() < nbPoints:
+            if geometry.GetNumberOfPoints() < nbPoints or geometry.GetNumberOfPoints() > nbPoints:
                 raise Exception('Unexpected number of points in the shape: %s' % str(geometry.GetNumberOfPoints()))
 
             # --------------------------------- #
             # ----- GET ARRAY OF FEATURES ----- #
             # --------------------------------- #
 
+            # *****
+            # ***** Get normals (3 useful components) - already normalized *****
+            normalArray = geometry.GetPointData().GetNormals()
+            nbCompNormal = normalArray.GetElementComponentSize() - 1  # -1 car 4eme comp = 1ere du pt suivant
+
+            # *****
             # ***** Get positions (3 useful components) *****
             positionName = "position"
             positionArray = geometry.GetPointData().GetVectors(positionName)
             nbCompPosition = positionArray.GetElementComponentSize() - 1  # -1 car 4eme comp = 1ere du pt suivant
 
             # Get position range & normalize
-            positionRange = positionArray.GetRange()
             positionMin = 1000000
             positionMax = -1000000
             for i in range(0,nbPoints):
@@ -78,8 +106,7 @@ def load_features(folder, min_num_shapes):
                         positionMax = value
             positionDepth = positionMax - positionMin
 
-            # Recupere les distances a chaque grp de chq pts
-            nbGroups = 8
+            # ***** Get distances to each mean group (nbGroups components) and normalization *****
             listGroupMean = list()
             for i in range(0, nbGroups):
                 name = "distanceGroup" + str(i)
@@ -91,16 +118,40 @@ def load_features(folder, min_num_shapes):
                     temp.SetTuple1(j, 2 * (temp.GetTuple1(j) - temp_min) / (temp_max) - 1)
                 listGroupMean.append(temp)
 
+            # ***** Get Curvatures and value for normalization (4 components) *****
+            meanCurvName = "Mean_Curvature"
+            meanCurvArray = geometry.GetPointData().GetScalars(meanCurvName)
+            meanCurveRange = meanCurvArray.GetRange()
+            meanCurveMin = meanCurveRange[0]
+            meanCurveMax = meanCurveRange[1]
+            meanCurveDepth = meanCurveMax - meanCurveMin
 
-            # ***** Get normals (3 useful components) *****
-            normalArray = geometry.GetPointData().GetNormals()
-            nbCompNormal = normalArray.GetElementComponentSize() - 1  # -1 car 4eme comp = 1ere du pt suivant
+            maxCurvName = "Maximum_Curvature"
+            maxCurvArray = geometry.GetPointData().GetScalars(maxCurvName)
+            maxCurveRange = maxCurvArray.GetRange()
+            maxCurveMin = maxCurveRange[0]
+            maxCurveMax = maxCurveRange[1]
+            maxCurveDepth = maxCurveMax - maxCurveMin
+
+            minCurvName = "Minimum_Curvature"
+            minCurvArray = geometry.GetPointData().GetScalars(minCurvName)
+            minCurveRange = minCurvArray.GetRange()
+            minCurveMin = minCurveRange[0]
+            minCurveMax = minCurveRange[1]
+            minCurveDepth = minCurveMax - minCurveMin
+
+            gaussCurvName = "Gauss_Curvature"
+            gaussCurvArray = geometry.GetPointData().GetScalars(gaussCurvName)
+            gaussCurveRange = gaussCurvArray.GetRange()
+            gaussCurveMin = gaussCurveRange[0]
+            gaussCurveMax = gaussCurveRange[1]
+            gaussCurveDepth = gaussCurveMax - gaussCurveMin
 
             # For each point of the current shape
             currentData = np.ndarray(shape=(nbPoints, nbFeatures), dtype=np.float32)
             for i in range(0, nbPoints):
 
-                if nbFeatures == 6:
+                if featuresType == "norm-pos":      # [Nx, Ny, Nz, Px, Py, Pz]
                     # Stock position in currentData - Normalization
                     for numComponent in range(0, nbCompPosition):
                         value = positionArray.GetComponent(i, numComponent)
@@ -110,18 +161,59 @@ def load_features(folder, min_num_shapes):
                     for numComponent in range(0, nbCompNormal):
                         currentData[i, numComponent + nbCompPosition] = normalArray.GetComponent(i, numComponent)
                 
-                elif nbFeatures == 3:
+                elif featuresType == "norm":        # [Nx, Ny, Nz]
                     # Stock normals in currentData
                     for numComponent in range(0, nbCompNormal):
                         currentData[i, numComponent] = normalArray.GetComponent(i, numComponent)
 
-                elif nbFeatures == 11:
+                elif featuresType == "norm-dist":   # [Nx, Ny, Nz, D0, ... Dmax]
                     # Stock normals in currentData
                     for numComponent in range(0, nbCompNormal):
                         currentData[i, numComponent] = normalArray.GetComponent(i, numComponent)
 
                     for numComponent in range(0, nbGroups):
                         currentData[i, numComponent + nbCompNormal] = listGroupMean[numComponent].GetTuple1(i)
+
+                elif featuresType == "norm-dist-curv":  # [Nx, Ny, Nz, D0, ... Dmax, meanCurv, maxCurv, minCurv, GaussCurv]
+                    # Stock normals in currentData
+                    for numComponent in range(0, nbCompNormal):
+                        currentData[i, numComponent] = normalArray.GetComponent(i, numComponent)
+
+                    for numComponent in range(0, nbGroups):
+                        currentData[i, numComponent + nbCompNormal] = listGroupMean[numComponent].GetTuple1(i)
+
+                    value = 2 * (meanCurvArray.GetTuple1(i) - meanCurveMin) / meanCurveDepth -1
+                    currentData[i, nbGroups + nbCompNormal] = value
+
+                    value = 2 * (maxCurvArray.GetTuple1(i) - maxCurveMin) / maxCurveDepth -1
+                    currentData[i, nbGroups + nbCompNormal + 1] = value
+
+                    value = 2 * (minCurvArray.GetTuple1(i) - minCurveMin) / minCurveDepth -1
+                    currentData[i, nbGroups + nbCompNormal + 2] = value
+
+                    value = 2 * (gaussCurvArray.GetTuple1(i) - gaussCurveMin) / gaussCurveDepth -1
+                    currentData[i, nbGroups + nbCompNormal + 3] = value
+
+                elif featuresType == "norm-curv":       # [Nx, Ny, Nz, meanCurv, maxCurv, minCurv, GaussCurv]
+                    # Stock normals in currentData
+                    for numComponent in range(0, nbCompNormal):
+                        currentData[i, numComponent] = normalArray.GetComponent(i, numComponent)
+
+                    # Stock mean curvature in currentData
+                    value = 2 * (meanCurvArray.GetTuple1(i) - meanCurveMin) / meanCurveDepth -1
+                    currentData[i, nbCompNormal] = value
+
+                    # Stock max curvature in currentData
+                    value = 2 * (maxCurvArray.GetTuple1(i) - maxCurveMin) / maxCurveDepth -1
+                    currentData[i, nbCompNormal + 1] = value
+
+                    # Stock min curvature in currentData
+                    value = 2 * (minCurvArray.GetTuple1(i) - minCurveMin) / minCurveDepth -1
+                    currentData[i, nbCompNormal + 2] = value
+
+                    # Stock gaussian curvature in currentData
+                    value = 2 * (gaussCurvArray.GetTuple1(i) - gaussCurveMin) / gaussCurveDepth -1
+                    currentData[i, nbCompNormal + 3] = value
 
             # Stack the current finished data in dataset
             dataset[num_shapes, :, :] = currentData
@@ -202,6 +294,7 @@ def merge_datasets(pickle_files, train_size, valid_size=0):
     start_v, start_t = 0, 0
     end_v, end_t = vsize_per_class, tsize_per_class
     end_l = vsize_per_class + tsize_per_class
+    # end_l = tsize_per_class
     for label, pickle_file in enumerate(pickle_files):
         try:
             with open(pickle_file, 'rb') as f:
@@ -228,10 +321,14 @@ def merge_datasets(pickle_files, train_size, valid_size=0):
 
 # --------------------------------------------------------------------------------------------------- #
 
-train_size = 60
-valid_size = 22
-
-test_size = 45
+if nbGroups == 8:  
+    train_size = 64
+    valid_size = 8
+    test_size = 45
+elif nbGroups == 6:  
+    train_size = 126
+    valid_size = 18
+    test_size = 45
 
 valid_dataset, valid_labels, train_dataset, train_labels = merge_datasets(train_datasets, train_size, valid_size)
 _, _, test_dataset, test_labels = merge_datasets(test_datasets, test_size)
