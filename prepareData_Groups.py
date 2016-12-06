@@ -12,7 +12,7 @@ def cleanDir(currentDir):
 # ------------------------------------------------------------------------------------- #
 
 
-def sortData(inputDir, outputDir, mappedSphere):
+def sortData(inputDir, outputDir):
 	# Verify directory integrity
 	if not os.path.isdir(spharmDir) or not os.path.isdir(groupsDir):
 		sys.exit("Error: " + spharmDir + " or " + groupsDir + " is not a directory.")
@@ -26,6 +26,9 @@ def sortData(inputDir, outputDir, mappedSphere):
 	os.makedirs(propDir)
 	sphereDir = groupsDir +"/sphere"
 	os.makedirs(sphereDir)
+
+	mappedSphereDir = groupsDir +"/mapped-sphere"
+	os.makedirs(mappedSphereDir)
 
 	suffixSphere1 = "surf_para.vtk" 
 	suffixSphere2 = "para.vtk"
@@ -41,10 +44,10 @@ def sortData(inputDir, outputDir, mappedSphere):
 	spharmList = os.listdir(spharmDir)
 	for file in spharmList:
 		# Check if it's a sphere
-		if file[len(file)-len(suffixSphere1):] == suffixSphere1 and mappedSphere:
-			shutil.copyfile(spharmDir + "/" + file, sphereDir + "/" + file)
+		if file[len(file)-len(suffixSphere1):] == suffixSphere1 :
+			shutil.copyfile(spharmDir + "/" + file, mappedSphereDir + "/" + file)
 
-		elif file[len(file)-len(suffixSphere1):] != suffixSphere1 and file[len(file)-len(suffixSphere2):] == suffixSphere2 and not mappedSphere:
+		elif file[len(file)-len(suffixSphere1):] != suffixSphere1 and file[len(file)-len(suffixSphere2):] == suffixSphere2 :
 			shutil.copyfile(spharmDir + "/" + file, sphereDir + "/" + file)
 		# Check if it's a mesh
 		elif file[len(file)-len(suffixMesh):] == suffixMesh:
@@ -60,12 +63,12 @@ def sortData(inputDir, outputDir, mappedSphere):
 # 																						#
 # ------------------------------------------------------------------------------------- #
 
-spharmDir = "/Users/prisgdd/Desktop/Pipeline/outputSPHARM2/Mesh/SPHARM"
+spharmDir = "/Users/prisgdd/Desktop/Pipeline/outputSPHARM/Mesh/SPHARM"
 groupsDir = "/Users/prisgdd/Desktop/Pipeline/inputGroups"
-mappedSphere = True
+mappedSphere = False
 
 
-sortData(spharmDir, groupsDir, mappedSphere)
+sortData(spharmDir, groupsDir)
 
 
 
