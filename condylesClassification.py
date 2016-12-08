@@ -4,7 +4,10 @@ from six.moves import cPickle as pickle
 import numpy as np
 import tensorflow as tf
 # import vtk
+import pandas as pd
 
+
+saveModelPath = 'saved_weights.ckpt'
 
 
 # --------------------------------------------------------------------------------------------------- #
@@ -72,8 +75,24 @@ print('Test set', test_dataset.shape, test_labels.shape)
 # ----------------------------------------------------------------------------- #
 
 def accuracy(predictions, labels):
-  return (100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1))
-          / predictions.shape[0])
+
+	[nbSamples, column] = predictions.shape
+	actu = np.zeros(nbSamples)
+	pred = np.zeros(nbSamples)
+
+	for i in range(0, nbSamples):
+		actu[i] = np.argmax(predictions[i,:])
+		pred[i] = np.argmax(labels[i,:])
+
+	# print "actu : " + str(actu)
+	# print "pred : " + str(pred)
+
+	y_actu = pd.Series(actu, name='Actual')
+	y_pred = pd.Series(pred, name='Predicted')
+	df_confusion = pd.crosstab(y_actu, y_pred)
+	
+	return (100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1))
+          / predictions.shape[0]), df_confusion
 
 
 # ----------------------------------------------------------------------------- #
@@ -85,11 +104,22 @@ def accuracy(predictions, labels):
 
 learning_rate = 0.0005
 batch_size = 10
-nb_hidden_layers_1 = 512
-nb_hidden_layers_2 = 1024
-nb_hidden_layers_3 = 1024
-nb_hidden_layers_4 = 512
+nb_hidden_layers = 3
 
+if nb_hidden_layers == 2:
+	nb_hidden_nodes_1 = 10000
+elif nb_hidden_layers == 3:
+	nb_hidden_nodes_1 = 2048
+	nb_hidden_nodes_2 = 2048
+elif nb_hidden_layers == 5:
+	nb_hidden_nodes_1 = 2048
+	nb_hidden_nodes_2 = 1024
+	nb_hidden_nodes_3 = 1024
+	nb_hidden_nodes_4 = 512
+
+regularization = True
+# regularization = False
+lambda_reg = 0.01
 
 graph = tf.Graph()
 with graph.as_default():
@@ -110,72 +140,139 @@ with graph.as_default():
 		initial = tf.constant(0.1, shape=shape)
 		return tf.Variable(initial)
 
-	W_fc1 = weight_variable([nbPoints * nbFeatures, nb_hidden_layers_1])
-	b_fc1 = bias_variable([nb_hidden_layers_1])
+	if nb_hidden_layers == 2:
+		W_fc1 = weight_variable([nbPoints * nbFeatures, nb_hidden_nodes_1])
+		b_fc1 = bias_variable([nb_hidden_nodes_1])
 
-	W_fc2 = weight_variable([nb_hidden_layers_1, nb_hidden_layers_2])
-	b_fc2 = bias_variable([nb_hidden_layers_2])
+		W_fc2 = weight_variable([nb_hidden_nodes_1, nbLabels])
+		b_fc2 = bias_variable([nbLabels])
 
-	W_fc3 = weight_variable([nb_hidden_layers_2, nb_hidden_layers_3])
-	b_fc3 = bias_variable([nb_hidden_layers_3])
+	elif nb_hidden_layers == 3:
+		W_fc1 = weight_variable([nbPoints * nbFeatures, nb_hidden_nodes_1])
+		b_fc1 = bias_variable([nb_hidden_nodes_1])
 
-	W_fc4 = weight_variable([nb_hidden_layers_3, nb_hidden_layers_4])
-	b_fc4 = bias_variable([nb_hidden_layers_4])
+		W_fc2 = weight_variable([nb_hidden_nodes_1, nb_hidden_nodes_2])
+		b_fc2 = bias_variable([nb_hidden_nodes_2])
 
-	W_fc5 = weight_variable([nb_hidden_layers_4, nbLabels])
-	b_fc5 = bias_variable([nbLabels])
+		W_fc3 = weight_variable([nb_hidden_nodes_2, nbLabels])
+		b_fc3 = bias_variable([nbLabels])
+
+	elif nb_hidden_layers == 5:
+		W_fc1 = weight_variable([nbPoints * nbFeatures, nb_hidden_nodes_1])
+		b_fc1 = bias_variable([nb_hidden_nodes_1])
+
+		W_fc2 = weight_variable([nb_hidden_nodes_1, nb_hidden_nodes_2])
+		b_fc2 = bias_variable([nb_hidden_nodes_2])
+
+		W_fc3 = weight_variable([nb_hidden_nodes_2, nb_hidden_nodes_3])
+		b_fc3 = bias_variable([nb_hidden_nodes_3])
+
+		W_fc4 = weight_variable([nb_hidden_nodes_3, nb_hidden_nodes_4])
+		b_fc4 = bias_variable([nb_hidden_nodes_4])
+
+		W_fc5 = weight_variable([nb_hidden_nodes_4, nbLabels])
+		b_fc5 = bias_variable([nbLabels])
 
 	# Model.
 	def model(data):
 
-		with tf.name_scope('FullyConnected1'):
+		if nb_hidden_layers == 2:
+			with tf.name_scope('FullyConnected1'):
 
-			h_fc1 = tf.matmul(data, W_fc1) + b_fc1
-			h_relu1 = tf.nn.relu(h_fc1)
+				h_fc1 = tf.matmul(data, W_fc1) + b_fc1
+				h_relu1 = tf.nn.relu(h_fc1)
 
-			# print "\nInput dimension FC 1: " + str(data.get_shape())
-			# print "Output dimension FC 1: " + str(h_relu1.get_shape())
+			with tf.name_scope('FullyConnected2'):
 
-		with tf.name_scope('FullyConnected2'):
+				h_fc2 = tf.matmul(h_relu1, W_fc2) + b_fc2
+				return h_fc2
 
-			h_fc2 = tf.matmul(h_relu1, W_fc2) + b_fc2
-			h_relu2 = tf.nn.relu(h_fc2)
+		elif nb_hidden_layers == 3:
+			with tf.name_scope('FullyConnected1'):
 
-			# print "\nInput dimension FC 2: " + str(h_relu1.get_shape())
-			# print "Output dimension FC 2: " + str(h_relu2.get_shape())
+				h_fc1 = tf.matmul(data, W_fc1) + b_fc1
+				h_relu1 = tf.nn.relu(h_fc1)
 
-		with tf.name_scope('FullyConnected3'):
+			with tf.name_scope('FullyConnected1'):
 
-			h_fc3 = tf.matmul(h_relu2, W_fc3) + b_fc3
-			h_relu3 = tf.nn.relu(h_fc3)
+				h_fc2 = tf.matmul(h_relu1, W_fc2) + b_fc2
+				h_relu2 = tf.nn.relu(h_fc2)
 
-			# print "\nInput dimension FC 3: " + str(h_relu2.get_shape())
-			# print "Output dimension FC 3: " + str(h_relu3.get_shape())
+			with tf.name_scope('FullyConnected3'):
 
-		with tf.name_scope('FullyConnected4'):
+				h_fc3 = tf.matmul(h_relu2, W_fc3) + b_fc3
+				return h_fc3
 
-			h_fc4 = tf.matmul(h_relu3, W_fc4) + b_fc4
-			h_relu4 = tf.nn.relu(h_fc4)
 
-			# print "\nInput dimension FC 4: " + str(h_relu3.get_shape())
-			# print "Output dimension FC 4: " + str(h_relu4.get_shape())
+		elif nb_hidden_layers == 5:
+			with tf.name_scope('FullyConnected1'):
 
-		with tf.name_scope('FullyConnected5'):
+				h_fc1 = tf.matmul(data, W_fc1) + b_fc1
+				h_relu1 = tf.nn.relu(h_fc1)
 
-			h_fc5 = tf.matmul(h_relu4, W_fc5) + b_fc5
+				# print "\nInput dimension FC 1: " + str(data.get_shape())
+				# print "Output dimension FC 1: " + str(h_relu1.get_shape())
 
-			# print "\nInput dimension FC 5: " + str(h_relu4.get_shape())
-			# print "Output dimension FC 5: " + str(h_fc5.get_shape())
+			with tf.name_scope('FullyConnected2'):
 
-		return h_fc5
+				h_fc2 = tf.matmul(h_relu1, W_fc2) + b_fc2
+				h_relu2 = tf.nn.relu(h_fc2)
+
+				# print "\nInput dimension FC 2: " + str(h_relu1.get_shape())
+				# print "Output dimension FC 2: " + str(h_relu2.get_shape())
+
+			with tf.name_scope('FullyConnected3'):
+
+				h_fc3 = tf.matmul(h_relu2, W_fc3) + b_fc3
+				h_relu3 = tf.nn.relu(h_fc3)
+
+				# print "\nInput dimension FC 3: " + str(h_relu2.get_shape())
+				# print "Output dimension FC 3: " + str(h_relu3.get_shape())
+
+			with tf.name_scope('FullyConnected4'):
+
+				h_fc4 = tf.matmul(h_relu3, W_fc4) + b_fc4
+				h_relu4 = tf.nn.relu(h_fc4)
+
+				# print "\nInput dimension FC 4: " + str(h_relu3.get_shape())
+				# print "Output dimension FC 4: " + str(h_relu4.get_shape())
+
+			with tf.name_scope('FullyConnected5'):
+
+				h_fc5 = tf.matmul(h_relu4, W_fc5) + b_fc5
+
+				# print "\nInput dimension FC 5: " + str(h_relu4.get_shape())
+				# print "Output dimension FC 5: " + str(h_fc5.get_shape())
+
+			return h_fc5
 
 	# Training computation.
 	logits = model(tf_train_dataset)
-	loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits, tf_train_labels))
+	
+	if not regularization:
+		loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits, tf_train_labels))
+	else:
+		if nb_hidden_layers == 2:
+			norms = tf.nn.l2_loss(W_fc1) + tf.nn.l2_loss(W_fc2)
+			loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits, tf_train_labels) + lambda_reg*norms)
+		elif nb_hidden_layers == 3:
+			norms = tf.nn.l2_loss(W_fc1) + tf.nn.l2_loss(W_fc2) + tf.nn.l2_loss(W_fc3)
+			loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits, tf_train_labels) + lambda_reg*norms)
+		elif nb_hidden_layers == 5:
+			# norms = tf.nn.l2_loss(W_fc1) + tf.nn.l2_loss(W_fc2) + tf.nn.l2_loss(b_fc1) + tf.nn.l2_loss(b_fc2) + tf.nn.l2_loss(W_fc3) + tf.nn.l2_loss(b_fc3) + tf.nn.l2_loss(W_fc4) + tf.nn.l2_loss(b_fc4) + tf.nn.l2_loss(W_fc5) + tf.nn.l2_loss(b_fc5)
+			norms = tf.nn.l2_loss(W_fc1) + tf.nn.l2_loss(W_fc2) + tf.nn.l2_loss(W_fc3) + tf.nn.l2_loss(W_fc4) + tf.nn.l2_loss(W_fc5)
+			loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits, tf_train_labels) + lambda_reg*norms)
 
 	# Optimizer.
-	# optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
-	optimizer = tf.train.AdagradOptimizer(learning_rate).minimize(loss)
+	optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
+	# optimizer = tf.train.AdagradOptimizer(learning_rate).minimize(loss)
+	
+	if nb_hidden_layers == 2:
+		saver = tf.train.Saver({"W_fc1": W_fc1, "b_fc1": b_fc1, "W_fc2": W_fc2, "b_fc2": b_fc2})
+	elif nb_hidden_layers == 3:
+		saver = tf.train.Saver({"W_fc1": W_fc1, "b_fc1": b_fc1, "W_fc2": W_fc2, "b_fc2": b_fc2, "W_fc3": W_fc3, "b_fc3": b_fc3})
+	elif nb_hidden_layers == 5:
+		saver = tf.train.Saver({"W_fc1": W_fc1, "b_fc1": b_fc1, "W_fc2": W_fc2, "b_fc2": b_fc2, "W_fc3": W_fc3, "b_fc3": b_fc3, "W_fc4": W_fc4, "b_fc4": b_fc4, "W_fc5": W_fc5, "b_fc5": b_fc5})
 
 	# Predictions for the training, validation, and test data.
 	train_prediction = tf.nn.softmax(logits)
@@ -183,10 +280,17 @@ with graph.as_default():
 	test_prediction = tf.nn.softmax(model(tf_test_dataset))
 
 
-
-
 ##### Let's run it: #####
-num_steps = 3001
+# num_steps = 2001
+# num_steps = 1001
+num_steps = 501
+
+print ""
+print "nbGroups = " + str(nbLabels)
+print "nb_hidden_layers = " + str(nb_hidden_layers)
+print "regularization : " + str(regularization)
+print "num steps = " + str(num_steps)
+print ""
 
 with tf.Session(graph=graph) as session:
 	tf.initialize_all_variables().run()
@@ -205,9 +309,21 @@ with tf.Session(graph=graph) as session:
 		_, l, predictions = session.run([optimizer, loss, train_prediction], feed_dict=feed_dict)
 		if (step % 500 == 0):
 			print("Minibatch loss at step %d: %f" % (step, l))
-			print("Minibatch accuracy: %.1f%%" % accuracy(predictions, batch_labels))
-			print("Validation accuracy: %.1f%%" % accuracy(valid_prediction.eval(), valid_labels))
-	print("Test accuracy: %.1f%%" % accuracy(test_prediction.eval(), test_labels))
+			print("Minibatch accuracy: %.1f%%" % accuracy(predictions, batch_labels)[0])
+			print("Validation accuracy: %.1f%%" % accuracy(valid_prediction.eval(), valid_labels)[0])
+	finalaccuracy = accuracy(test_prediction.eval(), test_labels)
+	print("Test accuracy: %.1f%%" % finalaccuracy[0])
+	print("\n\nConfusion matrix :")
+	print finalaccuracy[1]
+	print ""
+
+	# Save the variables to disk.
+	tf.Print(W_fc1)
+	if saveModelPath.rfind(".ckpt") != -1:
+		save_path = saver.save(session, saveModelPath)
+		print("Model saved in file: %s" % save_path)
+	else:
+		raise Exception("Impossible to save train model at %s. Must be a .cpkt file" % saveModelPath)
 
 
 
