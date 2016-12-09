@@ -75,9 +75,10 @@ print('Test set', test_dataset.shape, test_labels.shape)
 # ----------------------------------------------------------------------------- #
 
 def accuracy(predictions, labels):
-
+	# Accuracy
 	accuracy = (100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1)) / predictions.shape[0])
 
+	# Confusion matrix
 	[nbSamples, column] = predictions.shape
 	actu = np.zeros(nbSamples)
 	pred = np.zeros(nbSamples)
@@ -88,12 +89,11 @@ def accuracy(predictions, labels):
 	y_pred = pd.Series(pred, name='Predicted')
 	df_confusion = pd.crosstab(y_actu, y_pred)
 
-
+	# PPV and TPR
 	TruePos_sum = int(np.sum(predictions[:, 1] * labels[:, 1]))
 	PredPos_sum = int(max(np.sum(predictions[:, 1]), 1)) #Max to avoid to divide by 0
 	PredNeg_sum = np.sum(predictions[:, 0])
 	RealPos_sum = int(np.sum(labels[:, 1]))
-
 
 	if not PredPos_sum :
 		PPV = 0
@@ -123,11 +123,7 @@ if nb_hidden_layers == 2:
 elif nb_hidden_layers == 3:
 	nb_hidden_nodes_1 = 2048
 	nb_hidden_nodes_2 = 2048
-elif nb_hidden_layers == 5:
-	nb_hidden_nodes_1 = 2048
-	nb_hidden_nodes_2 = 1024
-	nb_hidden_nodes_3 = 1024
-	nb_hidden_nodes_4 = 512
+
 
 regularization = True
 # regularization = False
@@ -173,22 +169,6 @@ with graph.as_default():
 		W_fc3 = weight_variable([nb_hidden_nodes_2, nbLabels])
 		b_fc3 = bias_variable([nbLabels])
 
-	elif nb_hidden_layers == 5:
-		W_fc1 = weight_variable([nbPoints * nbFeatures, nb_hidden_nodes_1])
-		b_fc1 = bias_variable([nb_hidden_nodes_1])
-
-		W_fc2 = weight_variable([nb_hidden_nodes_1, nb_hidden_nodes_2])
-		b_fc2 = bias_variable([nb_hidden_nodes_2])
-
-		W_fc3 = weight_variable([nb_hidden_nodes_2, nb_hidden_nodes_3])
-		b_fc3 = bias_variable([nb_hidden_nodes_3])
-
-		W_fc4 = weight_variable([nb_hidden_nodes_3, nb_hidden_nodes_4])
-		b_fc4 = bias_variable([nb_hidden_nodes_4])
-
-		W_fc5 = weight_variable([nb_hidden_nodes_4, nbLabels])
-		b_fc5 = bias_variable([nbLabels])
-
 	# Model.
 	def model(data):
 
@@ -225,48 +205,6 @@ with graph.as_default():
 				return h_fc3
 
 
-		elif nb_hidden_layers == 5:
-			with tf.name_scope('FullyConnected1'):
-
-				h_fc1 = tf.matmul(data, W_fc1) + b_fc1
-				h_relu1 = tf.nn.relu(h_fc1)
-
-				# print "\nInput dimension FC 1: " + str(data.get_shape())
-				# print "Output dimension FC 1: " + str(h_relu1.get_shape())
-
-			with tf.name_scope('FullyConnected2'):
-
-				h_fc2 = tf.matmul(h_relu1, W_fc2) + b_fc2
-				h_relu2 = tf.nn.relu(h_fc2)
-
-				# print "\nInput dimension FC 2: " + str(h_relu1.get_shape())
-				# print "Output dimension FC 2: " + str(h_relu2.get_shape())
-
-			with tf.name_scope('FullyConnected3'):
-
-				h_fc3 = tf.matmul(h_relu2, W_fc3) + b_fc3
-				h_relu3 = tf.nn.relu(h_fc3)
-
-				# print "\nInput dimension FC 3: " + str(h_relu2.get_shape())
-				# print "Output dimension FC 3: " + str(h_relu3.get_shape())
-
-			with tf.name_scope('FullyConnected4'):
-
-				h_fc4 = tf.matmul(h_relu3, W_fc4) + b_fc4
-				h_relu4 = tf.nn.relu(h_fc4)
-
-				# print "\nInput dimension FC 4: " + str(h_relu3.get_shape())
-				# print "Output dimension FC 4: " + str(h_relu4.get_shape())
-
-			with tf.name_scope('FullyConnected5'):
-
-				h_fc5 = tf.matmul(h_relu4, W_fc5) + b_fc5
-
-				# print "\nInput dimension FC 5: " + str(h_relu4.get_shape())
-				# print "Output dimension FC 5: " + str(h_fc5.get_shape())
-
-			return h_fc5
-
 	# Training computation.
 	logits = model(tf_train_dataset)
 	
@@ -282,10 +220,6 @@ with graph.as_default():
 		elif nb_hidden_layers == 3:
 			norms = tf.nn.l2_loss(W_fc1) + tf.nn.l2_loss(W_fc2) + tf.nn.l2_loss(W_fc3)
 			loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits, tf_train_labels) + lambda_reg*norms)
-		elif nb_hidden_layers == 5:
-			# norms = tf.nn.l2_loss(W_fc1) + tf.nn.l2_loss(W_fc2) + tf.nn.l2_loss(b_fc1) + tf.nn.l2_loss(b_fc2) + tf.nn.l2_loss(W_fc3) + tf.nn.l2_loss(b_fc3) + tf.nn.l2_loss(W_fc4) + tf.nn.l2_loss(b_fc4) + tf.nn.l2_loss(W_fc5) + tf.nn.l2_loss(b_fc5)
-			norms = tf.nn.l2_loss(W_fc1) + tf.nn.l2_loss(W_fc2) + tf.nn.l2_loss(W_fc3) + tf.nn.l2_loss(W_fc4) + tf.nn.l2_loss(W_fc5)
-			loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits, tf_train_labels) + lambda_reg*norms)
 
 	# Optimizer.
 	optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
@@ -295,9 +229,7 @@ with graph.as_default():
 		saver = tf.train.Saver({"W_fc1": W_fc1, "b_fc1": b_fc1, "W_fc2": W_fc2, "b_fc2": b_fc2})
 	elif nb_hidden_layers == 3:
 		saver = tf.train.Saver({"W_fc1": W_fc1, "b_fc1": b_fc1, "W_fc2": W_fc2, "b_fc2": b_fc2, "W_fc3": W_fc3, "b_fc3": b_fc3})
-	elif nb_hidden_layers == 5:
-		saver = tf.train.Saver({"W_fc1": W_fc1, "b_fc1": b_fc1, "W_fc2": W_fc2, "b_fc2": b_fc2, "W_fc3": W_fc3, "b_fc3": b_fc3, "W_fc4": W_fc4, "b_fc4": b_fc4, "W_fc5": W_fc5, "b_fc5": b_fc5})
-
+	
 	# Predictions for the training, validation, and test data.
 	train_prediction = tf.nn.softmax(logits)
 	valid_prediction = tf.nn.softmax(model(tf_valid_dataset))
