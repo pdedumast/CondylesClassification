@@ -76,23 +76,35 @@ print('Test set', test_dataset.shape, test_labels.shape)
 
 def accuracy(predictions, labels):
 
+	accuracy = (100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1)) / predictions.shape[0])
+
 	[nbSamples, column] = predictions.shape
 	actu = np.zeros(nbSamples)
 	pred = np.zeros(nbSamples)
-
 	for i in range(0, nbSamples):
-		actu[i] = np.argmax(predictions[i,:])
-		pred[i] = np.argmax(labels[i,:])
-
-	# print "actu : " + str(actu)
-	# print "pred : " + str(pred)
-
+		actu[i] = np.argmax(labels[i,:])
+		pred[i] = np.argmax(predictions[i,:])
 	y_actu = pd.Series(actu, name='Actual')
 	y_pred = pd.Series(pred, name='Predicted')
 	df_confusion = pd.crosstab(y_actu, y_pred)
+
+
+	TruePos_sum = int(np.sum(predictions[:, 1] * labels[:, 1]))
+	PredPos_sum = int(max(np.sum(predictions[:, 1]), 1)) #Max to avoid to divide by 0
+	PredNeg_sum = np.sum(predictions[:, 0])
+	RealPos_sum = int(np.sum(labels[:, 1]))
+
+
+	if not PredPos_sum :
+		PPV = 0
+	else:
+		PPV = 100.0 *TruePos_sum / PredPos_sum # Positive Predictive Value, Precision
+	if not RealPos_sum:
+		TPR = 0
+	else:
+		TPR = 100.0 *TruePos_sum / RealPos_sum  # True Positive Rate, Sensitivity
 	
-	return (100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1))
-          / predictions.shape[0]), df_confusion
+	return accuracy, df_confusion, PPV, TPR
 
 
 # ----------------------------------------------------------------------------- #
@@ -104,10 +116,10 @@ def accuracy(predictions, labels):
 
 learning_rate = 0.0005
 batch_size = 10
-nb_hidden_layers = 3
+nb_hidden_layers = 2
 
 if nb_hidden_layers == 2:
-	nb_hidden_nodes_1 = 10000
+	nb_hidden_nodes_1 = 2048
 elif nb_hidden_layers == 3:
 	nb_hidden_nodes_1 = 2048
 	nb_hidden_nodes_2 = 2048
@@ -140,7 +152,11 @@ with graph.as_default():
 		initial = tf.constant(0.1, shape=shape)
 		return tf.Variable(initial)
 
-	if nb_hidden_layers == 2:
+	if nb_hidden_layers == 1:
+		W_fc1 = weight_variable([nbPoints * nbFeatures, nbLabels])
+		b_fc1 = bias_variable([nbLabels])
+
+	elif nb_hidden_layers == 2:
 		W_fc1 = weight_variable([nbPoints * nbFeatures, nb_hidden_nodes_1])
 		b_fc1 = bias_variable([nb_hidden_nodes_1])
 
@@ -176,7 +192,12 @@ with graph.as_default():
 	# Model.
 	def model(data):
 
-		if nb_hidden_layers == 2:
+		if nb_hidden_layers == 1:
+			with tf.name_scope('FullyConnected1'):
+				h_fc1 = tf.matmul(data, W_fc1) + b_fc1
+				return h_fc1
+
+		elif nb_hidden_layers == 2:
 			with tf.name_scope('FullyConnected1'):
 
 				h_fc1 = tf.matmul(data, W_fc1) + b_fc1
@@ -252,7 +273,10 @@ with graph.as_default():
 	if not regularization:
 		loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits, tf_train_labels))
 	else:
-		if nb_hidden_layers == 2:
+		if nb_hidden_layers == 1:
+			norms = tf.nn.l2_loss(W_fc1) 
+			loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits, tf_train_labels) + lambda_reg*norms)
+		elif nb_hidden_layers == 2:
 			norms = tf.nn.l2_loss(W_fc1) + tf.nn.l2_loss(W_fc2)
 			loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits, tf_train_labels) + lambda_reg*norms)
 		elif nb_hidden_layers == 3:
@@ -283,21 +307,23 @@ with graph.as_default():
 ##### Let's run it: #####
 # num_steps = 2001
 # num_steps = 1001
-num_steps = 501
+num_steps = 1001
 
-num_epochs = 3
+num_epochs = 2
 
 print ""
 print "nbGroups = " + str(nbLabels)
 print "nb_hidden_layers = " + str(nb_hidden_layers)
 print "regularization : " + str(regularization)
 print "num steps = " + str(num_steps)
+print "num epochs = " + str(num_epochs)
+print "batch_size = " + str(batch_size)
 print ""
 
 with tf.Session(graph=graph) as session:
 	tf.initialize_all_variables().run()
 	print("Initialized")
-	for epochs in range(0, num_epochs):
+	for epoch in range(0, num_epochs):
 		for step in range(num_steps):
 			# Pick an offset within the training data, which has been randomized.
 			# Note: we could use better randomization across epochs.
@@ -314,14 +340,22 @@ with tf.Session(graph=graph) as session:
 				print("Minibatch loss at step %d: %f" % (step, l))
 				print("Minibatch accuracy: %.1f%%" % accuracy(predictions, batch_labels)[0])
 				print("Validation accuracy: %.1f%%" % accuracy(valid_prediction.eval(), valid_labels)[0])
-	finalaccuracy = accuracy(test_prediction.eval(), test_labels)
-	print("Test accuracy: %.1f%%" % finalaccuracy[0])
-	print("\n\nConfusion matrix :")
-	print finalaccuracy[1]
-	print ""
+	finalaccuracy, mat_confusion, PPV, TPR = accuracy(test_prediction.eval(), test_labels)
+	print("Test accuracy: %.1f%%" % finalaccuracy)
+	print("\n\nConfusion matrix :\n" + str(mat_confusion))
+	print "\n PPV : " + str(PPV)
+	print "\n TPR : " + str(TPR)
+
+	print "\nThis is W_fc1 : "
+	print (session.run(W_fc1[:,:]))
+
+	print "\nThis is W_fc2 : "
+	print (session.run(W_fc2[:,:]))
+
+	# print "\nThis is W_fc3 : "
+	# print (session.run(W_fc3))
 
 	# Save the variables to disk.
-	tf.Print(W_fc1)
 	if saveModelPath.rfind(".ckpt") != -1:
 		save_path = saver.save(session, saveModelPath)
 		print("Model saved in file: %s" % save_path)
