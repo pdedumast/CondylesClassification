@@ -34,6 +34,7 @@ if nbGroups == 8:
     location = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/7Groups-Feat/"
 elif nbGroups == 6:
     location = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/5Groups-Feat/"
+    # location = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/5Groups-Limane-Feat/"
 
 train_folders = [os.path.join(location, d) for d in sorted(os.listdir(location))]       # Folder class liste
 
@@ -319,6 +320,49 @@ def merge_datasets(pickle_files, train_size, valid_size=0):
 
     return valid_dataset, valid_labels, train_dataset, train_labels
 
+
+def merge_all_datasets(pickle_files, train_size, valid_size=0):
+    num_classes = len(pickle_files)
+    valid_dataset, valid_labels = make_arrays(valid_size, nbPoints, nbFeatures)
+    train_dataset, train_labels = make_arrays(train_size, nbPoints, nbFeatures)
+    vsize_per_class = valid_size // num_classes
+    tsize_per_class = train_size // num_classes
+
+    start_v, start_t = 0, 0
+    end_v, end_t = vsize_per_class, 0
+    # end_l = vsize_per_class + tsize_per_class
+    # end_l = tsize_per_class
+    for label, pickle_file in enumerate(pickle_files):
+        try:
+            with open(pickle_file, 'rb') as f:
+                shape_set = pickle.load(f)
+                print shape_set.shape
+                # let's shuffle the letters to have random validation and training set
+                np.random.shuffle(shape_set)
+                if valid_dataset is not None:
+                    valid_shapes = shape_set[:vsize_per_class, :, :]
+                    valid_dataset[start_v:end_v, :, :] = valid_shapes
+                    valid_labels[start_v:end_v] = label
+                    start_v += vsize_per_class
+                    end_v += vsize_per_class
+
+                tsize_current_class = shape_set.shape[0]
+                end_t += tsize_current_class - vsize_per_class
+                end_l = tsize_current_class
+                train_shapes = shape_set[vsize_per_class:end_l, :, :]
+                train_dataset[start_t:end_t, :, :] = train_shapes
+                train_labels[start_t:end_t] = label
+                start_t += tsize_current_class - vsize_per_class
+                # end_t += tsize_per_class
+        except Exception as e:
+            print('Unable to process data from', pickle_file, ':', e)
+            raise
+
+    return valid_dataset, valid_labels, train_dataset, train_labels
+
+
+
+
 # --------------------------------------------------------------------------------------------------- #
 
 if nbGroups == 8:  
@@ -326,12 +370,21 @@ if nbGroups == 8:
     valid_size = 8
     test_size = 45
 elif nbGroups == 6:  
+    # train_size = 264
+    # valid_size = 22
+    # test_size = 288
     train_size = 126
     valid_size = 18
-    test_size = 45
+    test_size = 144
+    # train_size = 370
+    # valid_size = 32
+    # test_size = 432
+
 
 valid_dataset, valid_labels, train_dataset, train_labels = merge_datasets(train_datasets, train_size, valid_size)
 _, _, test_dataset, test_labels = merge_datasets(test_datasets, test_size)
+# valid_dataset, valid_labels, train_dataset, train_labels = merge_all_datasets(train_datasets, train_size, valid_size)
+# _, _, test_dataset, test_labels = merge_all_datasets(test_datasets, test_size)
 
 print('Training:', train_dataset.shape, train_labels.shape)
 print('Validation:', valid_dataset.shape, valid_labels.shape)
