@@ -5,35 +5,12 @@ import numpy as np
 import tensorflow as tf
 # import vtk
 import pandas as pd
-
+from random import randint
 
 saveModelPath = 'saved_weights.ckpt'
 
 
-# --------------------------------------------------------------------------------------------------- #
-# Reoad the data generated in pickleData.py
-
-pickle_file = 'condyles.pickle'
-
-with open(pickle_file, 'rb') as f:
-	save = pickle.load(f)
-  	train_dataset = save['train_dataset']
-  	train_labels = save['train_labels']
-  	valid_dataset = save['valid_dataset']
-  	valid_labels = save['valid_labels']
-  	test_dataset = save['test_dataset']
-  	test_labels = save['test_labels']
-  	del save  # hint to help gc free up memory
-  	print('Training set', train_dataset.shape, train_labels.shape)
-  	print('Validation set', valid_dataset.shape, valid_labels.shape)
-  	print('Test set', test_dataset.shape, test_labels.shape)
-
-
 # ----------------------------------------------------------------------------- #
-# ----------------------------------------------------------------------------- #
-## Reformat into a shape that's more adapted to the models we're going to train:
-#   - data as a flat matrix
-#   - labels as float 1-hot encodings
 
 nbPoints = 1002
 nbFeatures = 15
@@ -56,7 +33,152 @@ elif featuresType == "norm-dist-curv":
 elif featuresType == "norm-curv":
     nbFeatures = 3 + 4 
 
+# ----------------------------------------------------------------------------- #
+# ----------------------------------------------------------------------------- #
 
+
+if nbLabels == 8:
+    location = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/7Groups-Feat/"
+elif nbLabels == 6:
+    location = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/5Groups-Feat/"
+
+train_folders = [os.path.join(location, d) for d in sorted(os.listdir(location))]       # Folder class liste
+
+# Delete .DS_Store file if there is one
+if train_folders.count(str(location) + ".DS_Store"):
+    train_folders.remove(str(location) + ".DS_Store")
+
+# Getthe list of all .pickle files
+train_datasets = list()
+for f in train_folders:
+	_, ext = os.path.splitext(f)
+	if ext == ".pickle":
+		train_datasets.append(f)
+
+test_datasets = train_datasets
+print ""
+
+
+
+
+# ----------------------------------------------------------------------------- #
+
+#
+# Function make_arrays(nb_rows, nbPoints, nbFeatures)
+#
+#
+def make_arrays(nb_rows, nbPoints, nbFeatures):
+	if nb_rows:
+		dataset = np.ndarray((nb_rows, nbPoints, nbFeatures), dtype=np.float32)
+		labels = np.ndarray(nb_rows, dtype=np.int32)
+	else:
+		dataset, labels = None, None
+	return dataset, labels
+
+
+#########
+# Create list of array. 1 array per group. Each group shuffled
+
+train_datasets_list = list()
+train_labels_list = list()
+
+for label,pickle_file in enumerate(train_datasets):
+	try:
+		with open(pickle_file, 'rb') as f:
+			shape_set = pickle.load(f)
+			np.random.shuffle(shape_set)
+			train_dataset, train_labels = make_arrays(shape_set.shape[0], nbPoints, nbFeatures)
+			train_datasets_list.append(train_dataset)
+			train_labels_list.append(train_labels)
+
+	except Exception as e:
+		print('Unable to process data from', pickle_file, ':', e)
+		raise
+
+# Create the TEST dataset - Contains ALL the data (209)
+def create_test_dataset(train_datasets_list, min_test_size):
+	num_classes = len(train_datasets_list)
+	test_dataset, test_labels = make_arrays(min_test_size, nbPoints, nbFeatures)
+
+	start_t, end_t = 0, 0
+	for label, dataset in enumerate(train_datasets_list):
+		np.random.shuffle(dataset)
+
+		end_t += dataset.shape[0]
+		test_shapes = dataset[:, :, :]
+		test_dataset[start_t:end_t, :, :] = test_shapes
+		test_labels[start_t:end_t] = label
+		start_t += dataset.shape[0]
+		
+	return test_dataset, test_labels
+
+test_dataset, test_labels = create_test_dataset(train_datasets_list, 209)		# 209 = entire dataset size
+
+
+#
+# Function randomize(dataset, labels)
+#   Randomize the data and their labels
+#
+def randomize(dataset, labels):
+    permutation = np.random.permutation(labels.shape[0])
+    shuffled_dataset = dataset[permutation,:,:]
+    shuffled_labels = labels[permutation]
+    return shuffled_dataset, shuffled_labels
+
+test_dataset, test_labels = randomize(test_dataset, test_labels)
+
+
+
+# ---------
+# Create the VALID and TRAIN dataset - TRAIN + VALID = all the dataset. 
+# Data in Valid_dataset CAN'T be in Train_dataset
+def create_valid_train_dataset(pickle_files, vsize_per_class):
+	num_classes = len(train_datasets_list)
+	valid_dataset, valid_labels = make_arrays(vsize_per_class * num_classes, nbPoints, nbFeatures)
+	train_dataset, train_labels = make_arrays(209 - vsize_per_class * num_classes, nbPoints, nbFeatures)
+
+	start_v, start_t = 0, 0
+	end_v, end_t = vsize_per_class, 0
+
+	for label, pickle_file in enumerate(pickle_files):
+		try:
+			with open(pickle_file, 'rb') as f:
+				shape_set = pickle.load(f)
+				# let's shuffle the letters to have random validation and training set
+				np.random.shuffle(shape_set)
+
+				valid_shapes = shape_set[:vsize_per_class, :, :]
+				valid_dataset[start_v:end_v, :, :] = valid_shapes
+				valid_labels[start_v:end_v] = label
+
+				end_t += shape_set.shape[0] - vsize_per_class
+
+				train_shapes = shape_set[vsize_per_class:, :, :]
+				train_dataset[start_t:end_t, :, :] = train_shapes
+				train_labels[start_t:end_t] = label
+
+				start_v += vsize_per_class
+				end_v += vsize_per_class
+				start_t += shape_set.shape[0] - vsize_per_class
+
+				print "Done label : " + str(label)
+
+		except Exception as e:
+			print('Unable to process data from', pickle_file, ':', e)
+			raise
+
+	return train_dataset, train_labels, valid_dataset, valid_labels
+
+train_dataset, train_labels, valid_dataset, valid_labels = create_valid_train_dataset(train_datasets, 2)
+valid_dataset, valid_labels = randomize(valid_dataset, valid_labels)
+
+# ----------------------------------------------------------------------------- #
+
+
+# ----------------------------------------------------------------------------- #
+## Reformat into a shape that's more adapted to the models we're going to train:
+#   - data as a flat matrix
+#   - labels as float 1-hot encodings
 def reformat(dataset, labels):
 	dataset = dataset.reshape((-1, nbPoints * nbFeatures)).astype(np.float32)
 	labels = (np.arange(nbLabels) == labels[:,None]).astype(np.float32)
@@ -64,16 +186,17 @@ def reformat(dataset, labels):
 
 # ----------------------------------------------------------------------------- #
 
-train_dataset, train_labels = reformat(train_dataset, train_labels)
 valid_dataset, valid_labels = reformat(valid_dataset, valid_labels)
 test_dataset, test_labels = reformat(test_dataset, test_labels)
-print('\nTraining set', train_dataset.shape, train_labels.shape)
 print('Validation set', valid_dataset.shape, valid_labels.shape)
 print('Test set', test_dataset.shape, test_labels.shape)
 
 
 # ----------------------------------------------------------------------------- #
 
+#
+# Compute Accuray, precision, Sensitivity and Confusion matrix
+# 
 def accuracy(predictions, labels):
 	# Accuracy
 	accuracy = (100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1)) / predictions.shape[0])
@@ -115,7 +238,7 @@ def accuracy(predictions, labels):
 # 
 
 learning_rate = 0.0005
-batch_size = 10
+batch_size = 18
 nb_hidden_layers = 2
 
 if nb_hidden_layers == 2:
@@ -236,12 +359,44 @@ with graph.as_default():
 	test_prediction = tf.nn.softmax(model(tf_test_dataset))
 
 
+
+# ----------------------------------------------------------------------------- #
+
+# Create a minibatch for the training
+# Same number of data from each class
+# 
+def create_minibatch(train_dataset, tsize_per_class):
+	batch_dataset, batch_labels = make_arrays(nbLabels * tsize_per_class, nbPoints, nbFeatures)
+
+	for i in range(0, nbLabels):
+		index = np.where(train_labels == i)
+	
+		ind_prev, ind = -10, -10
+		j = 0
+
+		while j < tsize_per_class:
+			while (ind == ind_prev):
+				ind = randint(np.argmin(index), np.argmax(index))
+
+			batch_dataset[2 * i + j, :, :] = train_dataset[ind, :, :]
+			batch_labels[2 * i + j] = i
+			j = j + 1
+
+	return batch_dataset, batch_labels
+
+
+
+
+# ----------------------------------------------------------------------------- #
+# ----------------------------------------------------------------------------- #
+
+
 ##### Let's run it: #####
 # num_steps = 2001
 # num_steps = 1001
 num_steps = 1001
-
 num_epochs = 2
+
 
 print ""
 print "nbGroups = " + str(nbLabels)
@@ -257,12 +412,11 @@ with tf.Session(graph=graph) as session:
 	print("Initialized")
 	for epoch in range(0, num_epochs):
 		for step in range(num_steps):
-			# Pick an offset within the training data, which has been randomized.
-			# Note: we could use better randomization across epochs.
-			offset = (step * batch_size) % (train_labels.shape[0] - batch_size)
-			# Generate a minibatch.
-			batch_data = train_dataset[offset:(offset + batch_size), :]
-			batch_labels = train_labels[offset:(offset + batch_size), :]
+
+			batch_data, batch_labels = create_minibatch(train_dataset, 3)
+			batch_data, batch_labels = randomize(batch_data, batch_labels)
+			batch_data, batch_labels = reformat(batch_data, batch_labels)
+
 			# Prepare a dictionary telling the session where to feed the minibatch.
 			# The key of the dictionary is the placeholder node of the graph to be fed,
 			# and the value is the numpy array to feed to it.
