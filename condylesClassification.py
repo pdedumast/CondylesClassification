@@ -3,77 +3,24 @@ import sys
 from six.moves import cPickle as pickle
 import numpy as np
 import tensorflow as tf
-# import vtk
 import pandas as pd
 
 
-
-saveModel = 'saved_weights.ckpt'
-
-
-# --------------------------------------------------------------------------------------------------- #
-# Reoad the data generated in pickleData.py
-
-pickle_file = 'condyles.pickle'
-
-with open(pickle_file, 'rb') as f:
-	save = pickle.load(f)
-  	train_dataset = save['train_dataset']
-  	train_labels = save['train_labels']
-  	valid_dataset = save['valid_dataset']
-  	valid_labels = save['valid_labels']
-  	test_dataset = save['test_dataset']
-  	test_labels = save['test_labels']
-  	del save  # hint to help gc free up memory
-  	print('Training set', train_dataset.shape, train_labels.shape)
-  	print('Validation set', valid_dataset.shape, valid_labels.shape)
-  	print('Test set', test_dataset.shape, test_labels.shape)
-
-
-# ----------------------------------------------------------------------------- #
 # ----------------------------------------------------------------------------- #
 ## Reformat into a shape that's more adapted to the models we're going to train:
 #   - data as a flat matrix
 #   - labels as float 1-hot encodings
-
-nbPoints = 1002
-nbLabels = 6
-
-# featuresType = "norm"             # "norm" : que les normales, 3 composantes
-# featuresType = "norm-pos"         # "norm-pos" : normales + positions, 6 composantes
-# featuresType = "norm-dist"        # "norm-dist" : normales + distances aux mean. (3+nbGroups) composantes
-featuresType = "norm-dist-curv"     # "norm-dist-curv" : normales + distances aux mean + curvatures. (3+nbGroups+4) composantes
-# featuresType = "norm-curv"        # "norm-curv" : normales + curvatures. (3+4) composantes
-
-if featuresType == "norm":
-    nbFeatures = 3
-elif featuresType == "norm-pos":
-    nbFeatures = 3 + 3
-elif featuresType == "norm-dist":
-    nbFeatures = 3 + nbLabels
-elif featuresType == "norm-dist-curv":
-    nbFeatures = 3 + nbLabels + 4
-elif featuresType == "norm-curv":
-    nbFeatures = 3 + 4 
-
-
 def reformat(dataset, labels):
 	dataset = dataset.reshape((-1, nbPoints * nbFeatures)).astype(np.float32)
 	labels = (np.arange(nbLabels) == labels[:,None]).astype(np.float32)
 	return dataset, labels
 
-# ----------------------------------------------------------------------------- #
 
-train_dataset, train_labels = reformat(train_dataset, train_labels)
-valid_dataset, valid_labels = reformat(valid_dataset, valid_labels)
-test_dataset, test_labels = reformat(test_dataset, test_labels)
-print('\nTraining set', train_dataset.shape, train_labels.shape)
-print('Validation set', valid_dataset.shape, valid_labels.shape)
-print('Test set', test_dataset.shape, test_labels.shape)
-
-
-# ----------------------------------------------------------------------------- #
-
+## Performance measures of the network
+# Computation of : 	- Accuracy
+# 					- Precision (PPV)
+# 					- Sensitivity (TPR)
+# 					- Confusion matrix
 def accuracy(predictions, labels):
 	# Accuracy
 	accuracy = (100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1)) / predictions.shape[0])
@@ -103,8 +50,82 @@ def accuracy(predictions, labels):
 		TPR = 0
 	else:
 		TPR = 100.0 *TruePos_sum / RealPos_sum  # True Positive Rate, Sensitivity
-	
+
 	return accuracy, df_confusion, PPV, TPR
+
+
+# ----------------------------------------------------------------------------- #
+# 									PROGRAM										#
+# ----------------------------------------------------------------------------- #
+saveModel = 'saved_weights.ckpt'
+
+
+# Reoad the data generated in pickleData.py
+pickle_file = 'condyles.pickle'
+
+with open(pickle_file, 'rb') as f:
+	save = pickle.load(f)
+  	train_dataset = save['train_dataset']
+  	train_labels = save['train_labels']
+  	valid_dataset = save['valid_dataset']
+  	valid_labels = save['valid_labels']
+  	test_dataset = save['test_dataset']
+  	test_labels = save['test_labels']
+  	del save  # hint to help gc free up memory
+  	print('Training set', train_dataset.shape, train_labels.shape)
+  	print('Validation set', valid_dataset.shape, valid_labels.shape)
+  	print('Test set', test_dataset.shape, test_labels.shape)
+
+
+nbPoints = 1002
+nbLabels = 6
+# featuresType = "norm"             # "norm" : que les normales, 3 composantes
+# featuresType = "norm-pos"         # "norm-pos" : normales + positions, 6 composantes
+# featuresType = "norm-dist"        # "norm-dist" : normales + distances aux mean. (3+nbGroups) composantes
+featuresType = "norm-dist-curv"     # "norm-dist-curv" : normales + distances aux mean + curvatures. (3+nbGroups+4) composantes
+# featuresType = "norm-curv"        # "norm-curv" : normales + curvatures. (3+4) composantes
+
+if featuresType == "norm":
+    nbFeatures = 3
+elif featuresType == "norm-pos":
+    nbFeatures = 3 + 3
+elif featuresType == "norm-dist":
+    nbFeatures = 3 + nbLabels
+elif featuresType == "norm-dist-curv":
+    nbFeatures = 3 + nbLabels + 4
+elif featuresType == "norm-curv":
+    nbFeatures = 3 + 4 
+
+
+train_dataset, train_labels = reformat(train_dataset, train_labels)
+valid_dataset, valid_labels = reformat(valid_dataset, valid_labels)
+test_dataset, test_labels = reformat(test_dataset, test_labels)
+print("\nTraining set", train_dataset.shape, train_labels.shape)
+print("Validation set", valid_dataset.shape, valid_labels.shape)
+print("Test set", test_dataset.shape, test_labels.shape)
+
+## Network and training parameters
+learning_rate = 0.0005
+batch_size = 10
+nb_hidden_layers = 3
+
+if nb_hidden_layers == 2:
+	nb_hidden_nodes_1 = 2048
+elif nb_hidden_layers == 3:
+	nb_hidden_nodes_1, nb_hidden_nodes_2 = 2048, 2048
+
+regularization = True
+lambda_reg = 0.01
+
+num_steps = 1001
+num_epochs = 2
+
+print "\nnbGroups = " + str(nbLabels)
+print "nb_hidden_layers = " + str(nb_hidden_layers)
+print "regularization : " + str(regularization)
+print "num_steps = " + str(num_steps)
+print "num_epochs = " + str(num_epochs)
+print "batch_size = " + str(batch_size) + "\n"
 
 
 # ----------------------------------------------------------------------------- #
@@ -113,21 +134,6 @@ def accuracy(predictions, labels):
 # 																				#
 # ----------------------------------------------------------------------------- #
 # 
-
-learning_rate = 0.0005
-batch_size = 10
-nb_hidden_layers = 2
-
-if nb_hidden_layers == 2:
-	nb_hidden_nodes_1 = 2048
-elif nb_hidden_layers == 3:
-	nb_hidden_nodes_1 = 2048
-	nb_hidden_nodes_2 = 2048
-
-
-regularization = True
-# regularization = False
-lambda_reg = 0.01
 
 graph = tf.Graph()
 with graph.as_default():
@@ -204,7 +210,6 @@ with graph.as_default():
 				h_fc3 = tf.matmul(h_relu2, W_fc3) + b_fc3
 				return h_fc3
 
-
 	# Training computation.
 	logits = model(tf_train_dataset)
 	
@@ -222,8 +227,8 @@ with graph.as_default():
 			loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits, tf_train_labels) + lambda_reg*norms)
 
 	# Optimizer.
-	# optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
-	optimizer = tf.train.AdagradOptimizer(learning_rate).minimize(loss)
+	optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
+	# optimizer = tf.train.AdagradOptimizer(learning_rate).minimize(loss)
 
 	if nb_hidden_layers == 2:
 		saver = tf.train.Saver({"W_fc1": W_fc1, "b_fc1": b_fc1, "W_fc2": W_fc2, "b_fc2": b_fc2})
@@ -236,22 +241,10 @@ with graph.as_default():
 	test_prediction = tf.nn.softmax(model(tf_test_dataset))
 
 
-	##### Let's run it: #####
-	# num_steps = 2001
-	# num_steps = 1001
-	num_steps = 1001
-
-	num_epochs = 2
-
-	print ""
-	print "nbGroups = " + str(nbLabels)
-	print "nb_hidden_layers = " + str(nb_hidden_layers)
-	print "regularization : " + str(regularization)
-	print "num steps = " + str(num_steps)
-	print "num epochs = " + str(num_epochs)
-	print "batch_size = " + str(batch_size)
-	print ""
-
+	# -------------------------- #
+	#		Let's run it 		 #
+	# -------------------------- #
+	# 
 	with tf.Session(graph=graph) as session:
 		tf.initialize_all_variables().run()
 		print("Initialized")
@@ -272,22 +265,12 @@ with graph.as_default():
 					print("Minibatch loss at step %d: %f" % (step, l))
 					print("Minibatch accuracy: %.1f%%" % accuracy(predictions, batch_labels)[0])
 					print("Validation accuracy: %.1f%%" % accuracy(valid_prediction.eval(), valid_labels)[0])
+
 		finalaccuracy, mat_confusion, PPV, TPR = accuracy(test_prediction.eval(), test_labels)
 		print("Test accuracy: %.1f%%" % finalaccuracy)
 		print("\n\nConfusion matrix :\n" + str(mat_confusion))
 		print "\n PPV : " + str(PPV)
 		print "\n TPR : " + str(TPR)
-
-		print "\nThis is W_fc1 : "
-		print (session.run(W_fc1[:,:]))
-
-		print "\nThis is W_fc2 : "
-		print (session.run(W_fc2[:,:]))
-
-		# print "\nThis is W_fc3 : "
-		# print (session.run(W_fc3))
-
-
 
 		if saveModel.rfind(".ckpt") != -1:
 			save_path = saver.save(session, saveModel)
