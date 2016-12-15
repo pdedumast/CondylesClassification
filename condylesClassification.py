@@ -6,10 +6,9 @@ import tensorflow as tf
 # import vtk
 import pandas as pd
 
-import time
-start = time.time()
 
-saveModelPath = 'saved_weights.ckpt'
+
+saveModel = 'saved_weights.ckpt'
 
 
 # --------------------------------------------------------------------------------------------------- #
@@ -290,11 +289,9 @@ with graph.as_default():
 
 
 
-		end = time.time()
 		if saveModel.rfind(".ckpt") != -1:
 			save_path = saver.save(session, saveModel)
 			print("Model saved in file: %s" % save_path)
-			print ("Training phase took %dh%02dm%02ds" % (convert_time(end - start)))
 		else:
 			raise Exception("Impossible to save train model at %s. Must be a .cpkt file" % saveModelPath)
 
