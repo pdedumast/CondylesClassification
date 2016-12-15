@@ -6,6 +6,8 @@ import tensorflow as tf
 # import vtk
 import pandas as pd
 
+import time
+start = time.time()
 
 saveModelPath = 'saved_weights.ckpt'
 
@@ -36,7 +38,6 @@ with open(pickle_file, 'rb') as f:
 #   - labels as float 1-hot encodings
 
 nbPoints = 1002
-nbFeatures = 15
 nbLabels = 6
 
 # featuresType = "norm"             # "norm" : que les normales, 3 composantes
@@ -138,36 +139,36 @@ with graph.as_default():
 	tf_valid_dataset = tf.constant(valid_dataset)
 	tf_test_dataset = tf.constant(test_dataset)
 
-	def weight_variable(shape):
+	def weight_variable(shape, name=None):
 		"""Create a weight variable with appropriate initialization."""
 		initial = tf.truncated_normal(shape, stddev=0.1)
-		return tf.Variable(initial)
+		return tf.Variable(initial, name = name)
 
-	def bias_variable(shape):
+	def bias_variable(shape, name=None):
 		"""Create a bias variable with appropriate initialization."""
 		initial = tf.constant(0.1, shape=shape)
-		return tf.Variable(initial)
+		return tf.Variable(initial,name = name)
 
 	if nb_hidden_layers == 1:
-		W_fc1 = weight_variable([nbPoints * nbFeatures, nbLabels])
-		b_fc1 = bias_variable([nbLabels])
+		W_fc1 = weight_variable([nbPoints * nbFeatures, nbLabels], "W_fc1")
+		b_fc1 = bias_variable([nbLabels],"b_fc1")
 
 	elif nb_hidden_layers == 2:
-		W_fc1 = weight_variable([nbPoints * nbFeatures, nb_hidden_nodes_1])
-		b_fc1 = bias_variable([nb_hidden_nodes_1])
+		W_fc1 = weight_variable([nbPoints * nbFeatures, nb_hidden_nodes_1], "W_fc1")
+		b_fc1 = bias_variable([nb_hidden_nodes_1],"b_fc1")
 
-		W_fc2 = weight_variable([nb_hidden_nodes_1, nbLabels])
-		b_fc2 = bias_variable([nbLabels])
+		W_fc2 = weight_variable([nb_hidden_nodes_1, nbLabels], "W_fc2")
+		b_fc2 = bias_variable([nbLabels],"b_fc2")
 
 	elif nb_hidden_layers == 3:
-		W_fc1 = weight_variable([nbPoints * nbFeatures, nb_hidden_nodes_1])
-		b_fc1 = bias_variable([nb_hidden_nodes_1])
+		W_fc1 = weight_variable([nbPoints * nbFeatures, nb_hidden_nodes_1], "W_fc1")
+		b_fc1 = bias_variable([nb_hidden_nodes_1],"b_fc1")
 
-		W_fc2 = weight_variable([nb_hidden_nodes_1, nb_hidden_nodes_2])
-		b_fc2 = bias_variable([nb_hidden_nodes_2])
+		W_fc2 = weight_variable([nb_hidden_nodes_1, nb_hidden_nodes_2], "W_fc2")
+		b_fc2 = bias_variable([nb_hidden_nodes_2],"b_fc2")
 
-		W_fc3 = weight_variable([nb_hidden_nodes_2, nbLabels])
-		b_fc3 = bias_variable([nbLabels])
+		W_fc3 = weight_variable([nb_hidden_nodes_2, nbLabels], "W_fc3")
+		b_fc3 = bias_variable([nbLabels],"b_fc3")
 
 	# Model.
 	def model(data):
@@ -222,77 +223,80 @@ with graph.as_default():
 			loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits, tf_train_labels) + lambda_reg*norms)
 
 	# Optimizer.
-	optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
-	# optimizer = tf.train.AdagradOptimizer(learning_rate).minimize(loss)
-	
+	# optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
+	optimizer = tf.train.AdagradOptimizer(learning_rate).minimize(loss)
+
 	if nb_hidden_layers == 2:
 		saver = tf.train.Saver({"W_fc1": W_fc1, "b_fc1": b_fc1, "W_fc2": W_fc2, "b_fc2": b_fc2})
 	elif nb_hidden_layers == 3:
-		saver = tf.train.Saver({"W_fc1": W_fc1, "b_fc1": b_fc1, "W_fc2": W_fc2, "b_fc2": b_fc2, "W_fc3": W_fc3, "b_fc3": b_fc3})
-	
+	 	saver = tf.train.Saver({"W_fc1": W_fc1, "b_fc1": b_fc1, "W_fc2": W_fc2, "b_fc2": b_fc2, "W_fc3": W_fc3, "b_fc3": b_fc3})
+		
 	# Predictions for the training, validation, and test data.
 	train_prediction = tf.nn.softmax(logits)
 	valid_prediction = tf.nn.softmax(model(tf_valid_dataset))
 	test_prediction = tf.nn.softmax(model(tf_test_dataset))
 
 
-##### Let's run it: #####
-# num_steps = 2001
-# num_steps = 1001
-num_steps = 1001
+	##### Let's run it: #####
+	# num_steps = 2001
+	# num_steps = 1001
+	num_steps = 1001
 
-num_epochs = 2
+	num_epochs = 2
 
-print ""
-print "nbGroups = " + str(nbLabels)
-print "nb_hidden_layers = " + str(nb_hidden_layers)
-print "regularization : " + str(regularization)
-print "num steps = " + str(num_steps)
-print "num epochs = " + str(num_epochs)
-print "batch_size = " + str(batch_size)
-print ""
+	print ""
+	print "nbGroups = " + str(nbLabels)
+	print "nb_hidden_layers = " + str(nb_hidden_layers)
+	print "regularization : " + str(regularization)
+	print "num steps = " + str(num_steps)
+	print "num epochs = " + str(num_epochs)
+	print "batch_size = " + str(batch_size)
+	print ""
 
-with tf.Session(graph=graph) as session:
-	tf.initialize_all_variables().run()
-	print("Initialized")
-	for epoch in range(0, num_epochs):
-		for step in range(num_steps):
-			# Pick an offset within the training data, which has been randomized.
-			# Note: we could use better randomization across epochs.
-			offset = (step * batch_size) % (train_labels.shape[0] - batch_size)
-			# Generate a minibatch.
-			batch_data = train_dataset[offset:(offset + batch_size), :]
-			batch_labels = train_labels[offset:(offset + batch_size), :]
-			# Prepare a dictionary telling the session where to feed the minibatch.
-			# The key of the dictionary is the placeholder node of the graph to be fed,
-			# and the value is the numpy array to feed to it.
-			feed_dict = {tf_train_dataset : batch_data, tf_train_labels : batch_labels}
-			_, l, predictions = session.run([optimizer, loss, train_prediction], feed_dict=feed_dict)
-			if (step % 500 == 0):
-				print("Minibatch loss at step %d: %f" % (step, l))
-				print("Minibatch accuracy: %.1f%%" % accuracy(predictions, batch_labels)[0])
-				print("Validation accuracy: %.1f%%" % accuracy(valid_prediction.eval(), valid_labels)[0])
-	finalaccuracy, mat_confusion, PPV, TPR = accuracy(test_prediction.eval(), test_labels)
-	print("Test accuracy: %.1f%%" % finalaccuracy)
-	print("\n\nConfusion matrix :\n" + str(mat_confusion))
-	print "\n PPV : " + str(PPV)
-	print "\n TPR : " + str(TPR)
+	with tf.Session(graph=graph) as session:
+		tf.initialize_all_variables().run()
+		print("Initialized")
+		for epoch in range(0, num_epochs):
+			for step in range(num_steps):
+				# Pick an offset within the training data, which has been randomized.
+				# Note: we could use better randomization across epochs.
+				offset = (step * batch_size) % (train_labels.shape[0] - batch_size)
+				# Generate a minibatch.
+				batch_data = train_dataset[offset:(offset + batch_size), :]
+				batch_labels = train_labels[offset:(offset + batch_size), :]
+				# Prepare a dictionary telling the session where to feed the minibatch.
+				# The key of the dictionary is the placeholder node of the graph to be fed,
+				# and the value is the numpy array to feed to it.
+				feed_dict = {tf_train_dataset : batch_data, tf_train_labels : batch_labels}
+				_, l, predictions = session.run([optimizer, loss, train_prediction], feed_dict=feed_dict)
+				if (step % 500 == 0):
+					print("Minibatch loss at step %d: %f" % (step, l))
+					print("Minibatch accuracy: %.1f%%" % accuracy(predictions, batch_labels)[0])
+					print("Validation accuracy: %.1f%%" % accuracy(valid_prediction.eval(), valid_labels)[0])
+		finalaccuracy, mat_confusion, PPV, TPR = accuracy(test_prediction.eval(), test_labels)
+		print("Test accuracy: %.1f%%" % finalaccuracy)
+		print("\n\nConfusion matrix :\n" + str(mat_confusion))
+		print "\n PPV : " + str(PPV)
+		print "\n TPR : " + str(TPR)
 
-	print "\nThis is W_fc1 : "
-	print (session.run(W_fc1[:,:]))
+		print "\nThis is W_fc1 : "
+		print (session.run(W_fc1[:,:]))
 
-	print "\nThis is W_fc2 : "
-	print (session.run(W_fc2[:,:]))
+		print "\nThis is W_fc2 : "
+		print (session.run(W_fc2[:,:]))
 
-	# print "\nThis is W_fc3 : "
-	# print (session.run(W_fc3))
+		# print "\nThis is W_fc3 : "
+		# print (session.run(W_fc3))
 
-	# Save the variables to disk.
-	if saveModelPath.rfind(".ckpt") != -1:
-		save_path = saver.save(session, saveModelPath)
-		print("Model saved in file: %s" % save_path)
-	else:
-		raise Exception("Impossible to save train model at %s. Must be a .cpkt file" % saveModelPath)
+
+
+		end = time.time()
+		if saveModel.rfind(".ckpt") != -1:
+			save_path = saver.save(session, saveModel)
+			print("Model saved in file: %s" % save_path)
+			print ("Training phase took %dh%02dm%02ds" % (convert_time(end - start)))
+		else:
+			raise Exception("Impossible to save train model at %s. Must be a .cpkt file" % saveModelPath)
 
 
 
