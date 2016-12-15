@@ -31,19 +31,23 @@ elif featuresType == "norm-curv":
 
 # Location for each group files
 if nbGroups == 8:
-    location = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/7Groups-Feat/"
+    valid_train = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/7Groups-Feat/"
 elif nbGroups == 6:
-    location = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/5Groups-Feat/"
-    # location = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/5Groups-Limane-Feat/"
+    # valid_train = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/5Groups-Feat/"
+    valid_train = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/5Groups-Limane-Feat/"
 
-train_folders = [os.path.join(location, d) for d in sorted(os.listdir(location))]       # Folder class liste
+train_folders = [os.path.join(valid_train, d) for d in sorted(os.listdir(valid_train))]       # Folder class liste
 
 # Delete .DS_Store file if there is one
-if train_folders.count(str(location) + ".DS_Store"):
-    train_folders.remove(str(location) + ".DS_Store")
+if train_folders.count(str(valid_train) + ".DS_Store"):
+    train_folders.remove(str(valid_train) + ".DS_Store")
 
-test_folders = train_folders
-
+# test_folders = train_folders
+tests = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/5Groups-Feat/"
+test_folders = [os.path.join(tests, d) for d in sorted(os.listdir(tests))]
+# Delete .DS_Store file if there is one
+if test_folders.count(str(test_folders) + ".DS_Store"):
+    test_folders.remove(str(test_folders) + ".DS_Store")
 
 # --------------------------------------------------------------------------------------------------- #
 
@@ -370,21 +374,13 @@ if nbGroups == 8:
     valid_size = 8
     test_size = 45
 elif nbGroups == 6:  
-    # train_size = 264
-    # valid_size = 22
-    # test_size = 288
-    train_size = 126
-    valid_size = 18
-    test_size = 144
-    # train_size = 370
-    # valid_size = 32
-    # test_size = 432
+    train_size = 544
+    valid_size = 32
+    test_size = 209
 
 
 valid_dataset, valid_labels, train_dataset, train_labels = merge_datasets(train_datasets, train_size, valid_size)
-_, _, test_dataset, test_labels = merge_datasets(test_datasets, test_size)
-# valid_dataset, valid_labels, train_dataset, train_labels = merge_all_datasets(train_datasets, train_size, valid_size)
-# _, _, test_dataset, test_labels = merge_all_datasets(test_datasets, test_size)
+_, _, test_dataset, test_labels = merge_all_datasets(test_datasets, test_size)
 
 print('Training:', train_dataset.shape, train_labels.shape)
 print('Validation:', valid_dataset.shape, valid_labels.shape)
