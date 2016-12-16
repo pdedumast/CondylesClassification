@@ -6,6 +6,15 @@ import tensorflow as tf
 import pandas as pd
 
 
+nbPoints = 1002
+nbLabels = 6
+nbFeatures = 3 + nbLabels + 4
+
+saveModel = 'saved_weights.ckpt'
+
+
+# ----------------------------------------------------------------------------- #
+#                                 Needed Functions
 # ----------------------------------------------------------------------------- #
 ## Reformat into a shape that's more adapted to the models we're going to train:
 #   - data as a flat matrix
@@ -57,8 +66,6 @@ def accuracy(predictions, labels):
 # ----------------------------------------------------------------------------- #
 # 									PROGRAM										#
 # ----------------------------------------------------------------------------- #
-saveModel = 'saved_weights.ckpt'
-
 
 # Reoad the data generated in pickleData.py
 pickle_file = 'condyles.pickle'
@@ -75,26 +82,6 @@ with open(pickle_file, 'rb') as f:
   	print('Training set', train_dataset.shape, train_labels.shape)
   	print('Validation set', valid_dataset.shape, valid_labels.shape)
   	print('Test set', test_dataset.shape, test_labels.shape)
-
-
-nbPoints = 1002
-nbLabels = 6
-# featuresType = "norm"             # "norm" : que les normales, 3 composantes
-# featuresType = "norm-pos"         # "norm-pos" : normales + positions, 6 composantes
-# featuresType = "norm-dist"        # "norm-dist" : normales + distances aux mean. (3+nbGroups) composantes
-featuresType = "norm-dist-curv"     # "norm-dist-curv" : normales + distances aux mean + curvatures. (3+nbGroups+4) composantes
-# featuresType = "norm-curv"        # "norm-curv" : normales + curvatures. (3+4) composantes
-
-if featuresType == "norm":
-    nbFeatures = 3
-elif featuresType == "norm-pos":
-    nbFeatures = 3 + 3
-elif featuresType == "norm-dist":
-    nbFeatures = 3 + nbLabels
-elif featuresType == "norm-dist-curv":
-    nbFeatures = 3 + nbLabels + 4
-elif featuresType == "norm-curv":
-    nbFeatures = 3 + 4 
 
 
 train_dataset, train_labels = reformat(train_dataset, train_labels)

@@ -9,22 +9,14 @@ import vtk
 nbPoints = 1002
 nbGroups = 6
 
-# featuresType = "norm"             # "norm" : que les normales, 3 composantes
-# featuresType = "norm-pos"         # "norm-pos" : normales + positions, 6 composantes
-# featuresType = "norm-dist"        # "norm-dist" : normales + distances aux mean. (3+nbGroups) composantes
-featuresType = "norm-dist-curv"     # "norm-dist-curv" : normales + distances aux mean + curvatures. (3+nbGroups+4) composantes
-# featuresType = "norm-curv"        # "norm-curv" : normales + curvatures. (3+4) composantes
+nbFeatures = 3 + nbGroups + 4   # 3: Normals - nbGroups: dist to mean shapes - 4: Curvatures
 
-if featuresType == "norm":
-    nbFeatures = 3
-elif featuresType == "norm-pos":
-    nbFeatures = 3 + 3
-elif featuresType == "norm-dist":
-    nbFeatures = 3 + nbGroups
-elif featuresType == "norm-dist-curv":
-    nbFeatures = 3 + nbGroups + 4
-elif featuresType == "norm-curv":
-    nbFeatures = 3 + 4 
+# Location for each group files
+if nbGroups == 8:
+    valid_train = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/7Groups-Feat/"
+elif nbGroups == 6:
+    # valid_train = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/5Groups-Feat/"
+    valid_train = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/5Groups-Limane-Feat/"
 
 
 # ----------------------------------------------------------------------------- #
@@ -130,69 +122,25 @@ def load_features(folder, min_num_shapes):
             currentData = np.ndarray(shape=(nbPoints, nbFeatures), dtype=np.float32)
             for i in range(0, nbPoints):
 
-                if featuresType == "norm-pos":      # [Nx, Ny, Nz, Px, Py, Pz]
-                    # Stock position in currentData - Normalization
-                    for numComponent in range(0, nbCompPosition):
-                        value = positionArray.GetComponent(i, numComponent)
-                        currentData[i, numComponent] = 2 * (value - positionMin) / positionDepth - 1
+                # Stock normals in currentData
+                for numComponent in range(0, nbCompNormal):
+                    currentData[i, numComponent] = normalArray.GetComponent(i, numComponent)
 
-                    # Stock normals in currentData
-                    for numComponent in range(0, nbCompNormal):
-                        currentData[i, numComponent + nbCompPosition] = normalArray.GetComponent(i, numComponent)
-                
-                elif featuresType == "norm":        # [Nx, Ny, Nz]
-                    # Stock normals in currentData
-                    for numComponent in range(0, nbCompNormal):
-                        currentData[i, numComponent] = normalArray.GetComponent(i, numComponent)
+                for numComponent in range(0, nbGroups):
+                    currentData[i, numComponent + nbCompNormal] = listGroupMean[numComponent].GetTuple1(i)
 
-                elif featuresType == "norm-dist":   # [Nx, Ny, Nz, D0, ... Dmax]
-                    # Stock normals in currentData
-                    for numComponent in range(0, nbCompNormal):
-                        currentData[i, numComponent] = normalArray.GetComponent(i, numComponent)
+                value = 2 * (meanCurvArray.GetTuple1(i) - meanCurveMin) / meanCurveDepth -1
+                currentData[i, nbGroups + nbCompNormal] = value
 
-                    for numComponent in range(0, nbGroups):
-                        currentData[i, numComponent + nbCompNormal] = listGroupMean[numComponent].GetTuple1(i)
+                value = 2 * (maxCurvArray.GetTuple1(i) - maxCurveMin) / maxCurveDepth -1
+                currentData[i, nbGroups + nbCompNormal + 1] = value
 
-                elif featuresType == "norm-dist-curv":  # [Nx, Ny, Nz, D0, ... Dmax, meanCurv, maxCurv, minCurv, GaussCurv]
-                    # Stock normals in currentData
-                    for numComponent in range(0, nbCompNormal):
-                        currentData[i, numComponent] = normalArray.GetComponent(i, numComponent)
+                value = 2 * (minCurvArray.GetTuple1(i) - minCurveMin) / minCurveDepth -1
+                currentData[i, nbGroups + nbCompNormal + 2] = value
 
-                    for numComponent in range(0, nbGroups):
-                        currentData[i, numComponent + nbCompNormal] = listGroupMean[numComponent].GetTuple1(i)
+                value = 2 * (gaussCurvArray.GetTuple1(i) - gaussCurveMin) / gaussCurveDepth -1
+                currentData[i, nbGroups + nbCompNormal + 3] = value
 
-                    value = 2 * (meanCurvArray.GetTuple1(i) - meanCurveMin) / meanCurveDepth -1
-                    currentData[i, nbGroups + nbCompNormal] = value
-
-                    value = 2 * (maxCurvArray.GetTuple1(i) - maxCurveMin) / maxCurveDepth -1
-                    currentData[i, nbGroups + nbCompNormal + 1] = value
-
-                    value = 2 * (minCurvArray.GetTuple1(i) - minCurveMin) / minCurveDepth -1
-                    currentData[i, nbGroups + nbCompNormal + 2] = value
-
-                    value = 2 * (gaussCurvArray.GetTuple1(i) - gaussCurveMin) / gaussCurveDepth -1
-                    currentData[i, nbGroups + nbCompNormal + 3] = value
-
-                elif featuresType == "norm-curv":       # [Nx, Ny, Nz, meanCurv, maxCurv, minCurv, GaussCurv]
-                    # Stock normals in currentData
-                    for numComponent in range(0, nbCompNormal):
-                        currentData[i, numComponent] = normalArray.GetComponent(i, numComponent)
-
-                    # Stock mean curvature in currentData
-                    value = 2 * (meanCurvArray.GetTuple1(i) - meanCurveMin) / meanCurveDepth -1
-                    currentData[i, nbCompNormal] = value
-
-                    # Stock max curvature in currentData
-                    value = 2 * (maxCurvArray.GetTuple1(i) - maxCurveMin) / maxCurveDepth -1
-                    currentData[i, nbCompNormal + 1] = value
-
-                    # Stock min curvature in currentData
-                    value = 2 * (minCurvArray.GetTuple1(i) - minCurveMin) / minCurveDepth -1
-                    currentData[i, nbCompNormal + 2] = value
-
-                    # Stock gaussian curvature in currentData
-                    value = 2 * (gaussCurvArray.GetTuple1(i) - gaussCurveMin) / gaussCurveDepth -1
-                    currentData[i, nbCompNormal + 3] = value
 
             # Stack the current finished data in dataset
             dataset[num_shapes, :, :] = currentData
@@ -345,14 +293,6 @@ def randomize(dataset, labels):
 # ----------------------------------------------------------------------------- #
 #                                     PROGRAM
 # ----------------------------------------------------------------------------- #
-
-
-# Location for each group files
-if nbGroups == 8:
-    valid_train = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/7Groups-Feat/"
-elif nbGroups == 6:
-    # valid_train = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/5Groups-Feat/"
-    valid_train = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/5Groups-Limane-Feat/"
 
 train_folders = [os.path.join(valid_train, d) for d in sorted(os.listdir(valid_train))]       # Folder class liste
 
