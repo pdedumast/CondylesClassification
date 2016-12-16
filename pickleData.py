@@ -1,12 +1,10 @@
 import numpy as np
 import os
-import tensorflow as tf
 from six.moves import cPickle as pickle
-
 import vtk
 
 
-# --------------------------------------------------------------------------------------------------- #
+# ----------------------------------------------------------------------------- #
 
 nbPoints = 1002
 nbGroups = 6
@@ -27,29 +25,11 @@ elif featuresType == "norm-dist-curv":
     nbFeatures = 3 + nbGroups + 4
 elif featuresType == "norm-curv":
     nbFeatures = 3 + 4 
-# --------------------------------------------------------------------------------------------------- #
 
-# Location for each group files
-if nbGroups == 8:
-    valid_train = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/7Groups-Feat/"
-elif nbGroups == 6:
-    # valid_train = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/5Groups-Feat/"
-    valid_train = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/5Groups-Limane-Feat/"
 
-train_folders = [os.path.join(valid_train, d) for d in sorted(os.listdir(valid_train))]       # Folder class liste
-
-# Delete .DS_Store file if there is one
-if train_folders.count(str(valid_train) + ".DS_Store"):
-    train_folders.remove(str(valid_train) + ".DS_Store")
-
-# test_folders = train_folders
-tests = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/5Groups-Feat/"
-test_folders = [os.path.join(tests, d) for d in sorted(os.listdir(tests))]
-# Delete .DS_Store file if there is one
-if test_folders.count(str(test_folders) + ".DS_Store"):
-    test_folders.remove(str(test_folders) + ".DS_Store")
-
-# --------------------------------------------------------------------------------------------------- #
+# ----------------------------------------------------------------------------- #
+#                                 Needed Functions
+# ----------------------------------------------------------------------------- #
 
 #
 # Function load_features(folder, min_num_shapes)
@@ -100,8 +80,7 @@ def load_features(folder, min_num_shapes):
             nbCompPosition = positionArray.GetElementComponentSize() - 1  # -1 car 4eme comp = 1ere du pt suivant
 
             # Get position range & normalize
-            positionMin = 1000000
-            positionMax = -1000000
+            positionMin, positionMax = 1000000, -1000000
             for i in range(0,nbPoints):
                 for numComponent in range(0, nbCompPosition):
                     value = positionArray.GetComponent(i, numComponent)
@@ -117,8 +96,7 @@ def load_features(folder, min_num_shapes):
                 name = "distanceGroup" + str(i)
                 temp = geometry.GetPointData().GetScalars(name)
                 temp_range = temp.GetRange()
-                temp_min = temp_range[0]
-                temp_max = temp_range[1]
+                temp_min, temp_max = temp_range[0], temp_range[1]
                 for j in range(0,nbPoints):
                     temp.SetTuple1(j, 2 * (temp.GetTuple1(j) - temp_min) / (temp_max) - 1)
                 listGroupMean.append(temp)
@@ -127,29 +105,25 @@ def load_features(folder, min_num_shapes):
             meanCurvName = "Mean_Curvature"
             meanCurvArray = geometry.GetPointData().GetScalars(meanCurvName)
             meanCurveRange = meanCurvArray.GetRange()
-            meanCurveMin = meanCurveRange[0]
-            meanCurveMax = meanCurveRange[1]
+            meanCurveMin, meanCurveMax = meanCurveRange[0], meanCurveRange[1]
             meanCurveDepth = meanCurveMax - meanCurveMin
 
             maxCurvName = "Maximum_Curvature"
             maxCurvArray = geometry.GetPointData().GetScalars(maxCurvName)
             maxCurveRange = maxCurvArray.GetRange()
-            maxCurveMin = maxCurveRange[0]
-            maxCurveMax = maxCurveRange[1]
+            maxCurveMin, maxCurveMax = maxCurveRange[0], maxCurveRange[1]
             maxCurveDepth = maxCurveMax - maxCurveMin
 
             minCurvName = "Minimum_Curvature"
             minCurvArray = geometry.GetPointData().GetScalars(minCurvName)
             minCurveRange = minCurvArray.GetRange()
-            minCurveMin = minCurveRange[0]
-            minCurveMax = minCurveRange[1]
+            minCurveMin, minCurveMax = minCurveRange[0], minCurveRange[1]
             minCurveDepth = minCurveMax - minCurveMin
 
             gaussCurvName = "Gauss_Curvature"
             gaussCurvArray = geometry.GetPointData().GetScalars(gaussCurvName)
             gaussCurveRange = gaussCurvArray.GetRange()
-            gaussCurveMin = gaussCurveRange[0]
-            gaussCurveMax = gaussCurveRange[1]
+            gaussCurveMin, gaussCurveMax = gaussCurveRange[0], gaussCurveRange[1]
             gaussCurveDepth = gaussCurveMax - gaussCurveMin
 
             # For each point of the current shape
@@ -265,13 +239,6 @@ def maybe_pickle(data_folders, min_num_shapes_per_class, force=False):
 
     return dataset_names
 
-# --------------------------------------------------------------------------------------------------- #
-
-train_datasets = maybe_pickle(train_folders, 9)
-test_datasets = maybe_pickle(test_folders, 5)
-
-
-# --------------------------------------------------------------------------------------------------- #
 
 #
 # Function make_arrays(nb_rows, nbPoints, nbFeatures)
@@ -324,7 +291,10 @@ def merge_datasets(pickle_files, train_size, valid_size=0):
 
     return valid_dataset, valid_labels, train_dataset, train_labels
 
-
+#
+# Function merge_all_datasets(pickle_files, train_size, valid_size=0)
+#
+#
 def merge_all_datasets(pickle_files, train_size, valid_size=0):
     num_classes = len(pickle_files)
     valid_dataset, valid_labels = make_arrays(valid_size, nbPoints, nbFeatures)
@@ -334,13 +304,10 @@ def merge_all_datasets(pickle_files, train_size, valid_size=0):
 
     start_v, start_t = 0, 0
     end_v, end_t = vsize_per_class, 0
-    # end_l = vsize_per_class + tsize_per_class
-    # end_l = tsize_per_class
     for label, pickle_file in enumerate(pickle_files):
         try:
             with open(pickle_file, 'rb') as f:
                 shape_set = pickle.load(f)
-                print shape_set.shape
                 # let's shuffle the letters to have random validation and training set
                 np.random.shuffle(shape_set)
                 if valid_dataset is not None:
@@ -364,10 +331,46 @@ def merge_all_datasets(pickle_files, train_size, valid_size=0):
 
     return valid_dataset, valid_labels, train_dataset, train_labels
 
+#
+# Function randomize(dataset, labels)
+#   Randomize the data and their labels
+#
+def randomize(dataset, labels):
+    permutation = np.random.permutation(labels.shape[0])
+    shuffled_dataset = dataset[permutation,:,:]
+    shuffled_labels = labels[permutation]
+    return shuffled_dataset, shuffled_labels
 
 
+# ----------------------------------------------------------------------------- #
+#                                     PROGRAM
+# ----------------------------------------------------------------------------- #
 
-# --------------------------------------------------------------------------------------------------- #
+
+# Location for each group files
+if nbGroups == 8:
+    valid_train = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/7Groups-Feat/"
+elif nbGroups == 6:
+    # valid_train = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/5Groups-Feat/"
+    valid_train = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/5Groups-Limane-Feat/"
+
+train_folders = [os.path.join(valid_train, d) for d in sorted(os.listdir(valid_train))]       # Folder class liste
+
+# Delete .DS_Store file if there is one
+if train_folders.count(str(valid_train) + ".DS_Store"):
+    train_folders.remove(str(valid_train) + ".DS_Store")
+
+# test_folders = train_folders
+tests = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/5Groups-Feat/"
+test_folders = [os.path.join(tests, d) for d in sorted(os.listdir(tests))]
+# Delete .DS_Store file if there is one
+if test_folders.count(str(test_folders) + ".DS_Store"):
+    test_folders.remove(str(test_folders) + ".DS_Store")
+
+train_datasets = maybe_pickle(train_folders, 9)
+test_datasets = maybe_pickle(test_folders, 5)
+
+
 
 if nbGroups == 8:  
     train_size = 64
@@ -382,31 +385,19 @@ elif nbGroups == 6:
 valid_dataset, valid_labels, train_dataset, train_labels = merge_datasets(train_datasets, train_size, valid_size)
 _, _, test_dataset, test_labels = merge_all_datasets(test_datasets, test_size)
 
+print ""
 print('Training:', train_dataset.shape, train_labels.shape)
 print('Validation:', valid_dataset.shape, valid_labels.shape)
 print('Testing:', test_dataset.shape, test_labels.shape)
-#
 
 
-# --------------------------------------------------------------------------------------------------- #
-
-
-#
-# Function randomize(dataset, labels)
-#   Randomize the data and their labels
-#
-def randomize(dataset, labels):
-    permutation = np.random.permutation(labels.shape[0])
-    shuffled_dataset = dataset[permutation,:,:]
-    shuffled_labels = labels[permutation]
-    return shuffled_dataset, shuffled_labels
 
 train_dataset, train_labels = randomize(train_dataset, train_labels)
 test_dataset, test_labels = randomize(test_dataset, test_labels)
 valid_dataset, valid_labels = randomize(valid_dataset, valid_labels)
 
 
-# --------------------------------------------------------------------------------------------------- #
+# ----------------------------------------------------------------------------- #
 # Save the data for later reuse
 
 pickle_file = 'condyles.pickle'
