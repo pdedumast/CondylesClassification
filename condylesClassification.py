@@ -10,8 +10,10 @@ nbPoints = 1002
 nbLabels = 6
 nbFeatures = 3 + nbLabels + 4
 
-saveModel = 'saved_weights.ckpt'
-
+if nbLabels == 6:
+	saveModel = 'weights_5Groups.ckpt'
+else:
+	saveModel = 'weights_7Groups.ckpt'
 
 # ----------------------------------------------------------------------------- #
 #                                 Needed Functions
@@ -228,6 +230,11 @@ with graph.as_default():
 	test_prediction = tf.nn.softmax(model(tf_test_dataset))
 
 
+	
+
+
+
+
 	# -------------------------- #
 	#		Let's run it 		 #
 	# -------------------------- #
@@ -265,10 +272,7 @@ with graph.as_default():
 		else:
 			raise Exception("Impossible to save train model at %s. Must be a .cpkt file" % saveModelPath)
 
-
-
-
-
+		summary_writer = tf.train.SummaryWriter('.', graph=session.graph)
 
 
 
