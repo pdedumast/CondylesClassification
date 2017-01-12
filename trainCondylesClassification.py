@@ -6,7 +6,7 @@ import tensorflow as tf
 # import pandas as pd
 
 import neuralnetwork as nn
-
+import inputdata
 
 
 saveModel = 'weights_5Groups.ckpt'
@@ -30,28 +30,30 @@ flags.DEFINE_string('pickle_file', 'condyles.pickle','Path to the pickle file co
 # ----------------------------------------------------------------------------- #
 # 									PROGRAM										#
 # ----------------------------------------------------------------------------- #
+def get_inputs(pickle_file):
 
-# Reoad the data generated in pickleData.py
-with open(FLAGS.pickle_file, 'rb') as f:
-	save = pickle.load(f)
-  	train_dataset = save['train_dataset']
-  	train_labels = save['train_labels']
-  	valid_dataset = save['valid_dataset']
-  	valid_labels = save['valid_labels']
-  	test_dataset = save['test_dataset']
-  	test_labels = save['test_labels']
-  	del save  # hint to help gc free up memory
-  	print('Training set', train_dataset.shape, train_labels.shape)
-  	print('Validation set', valid_dataset.shape, valid_labels.shape)
-  	print('Test set', test_dataset.shape, test_labels.shape)
+	# Reoad the data generated in pickleData.py
+	with open(FLAGS.pickle_file, 'rb') as f:
+		save = pickle.load(f)
+	  	train_dataset = save['train_dataset']
+	  	train_labels = save['train_labels']
+	  	valid_dataset = save['valid_dataset']
+	  	valid_labels = save['valid_labels']
+	  	# test_dataset = save['test_dataset']
+	  	# test_labels = save['test_labels']
+	  	del save  # hint to help gc free up memory
+	  	print('Training set', train_dataset.shape, train_labels.shape)
+	  	print('Validation set', valid_dataset.shape, valid_labels.shape)
+	  	# print('Test set', test_dataset.shape, test_labels.shape)
 
+		train_dataset, train_labels = inputdata.reformat(train_dataset, train_labels)
+		valid_dataset, valid_labels = inputdata.reformat(valid_dataset, valid_labels)
+		# test_dataset, test_labels = inputdata.reformat(test_dataset, test_labels)
+		print("\nTraining set", train_dataset.shape, train_labels.shape)
+		print("Validation set", valid_dataset.shape, valid_labels.shape)
+		# print("Test set", test_dataset.shape, test_labels.shape)
 
-train_dataset, train_labels = nn.reformat(train_dataset, train_labels)
-valid_dataset, valid_labels = nn.reformat(valid_dataset, valid_labels)
-test_dataset, test_labels = nn.reformat(test_dataset, test_labels)
-print("\nTraining set", train_dataset.shape, train_labels.shape)
-print("Validation set", valid_dataset.shape, valid_labels.shape)
-print("Test set", test_dataset.shape, test_labels.shape)
+		return train_dataset, train_labels, valid_dataset, valid_labels
 
 ## Network and training parameters
 
@@ -62,7 +64,7 @@ elif nn.NUM_HIDDEN_LAYERS == 2:
 	nb_hidden_nodes_1, nb_hidden_nodes_2 = 2048, 2048
 
 
-print "\nnbGroups = " + str(nn.NUM_CLASSES)
+print "\nnbGroups = " + str(inputdata.NUM_CLASSES)
 print "nb_hidden_layers = " + str(nn.NUM_HIDDEN_LAYERS)
 # print "regularization : " + str(regularization)
 print "num_steps = " + str(FLAGS.num_steps)
@@ -88,8 +90,8 @@ def placeholder_inputs(batch_size):
 	# Note that the shapes of the placeholders match the shapes of the full
 	# image and label tensors, except the first dimension is now batch_size
 	# rather than the full size of the train or test data sets.
-	tf_train_dataset = tf.placeholder(tf.float32, shape=(batch_size, nn.NUM_POINTS * nn.NUM_FEATURES))
-	tf_train_labels = tf.placeholder(tf.int32, shape=(batch_size, nn.NUM_CLASSES))
+	tf_train_dataset = tf.placeholder(tf.float32, shape=(batch_size, inputdata.NUM_POINTS * inputdata.NUM_FEATURES))
+	tf_train_labels = tf.placeholder(tf.int32, shape=(batch_size, inputdata.NUM_CLASSES))
 	return tf_train_dataset, tf_train_labels
 
 # ----------------------------------------------------------------------------- #
@@ -100,7 +102,7 @@ def placeholder_inputs(batch_size):
 # 
 
 
-def run_training():
+def run_training(train_dataset, train_labels, valid_dataset, valid_labels):
 
 	# Construct the graph
 	graph = tf.Graph()
@@ -112,7 +114,7 @@ def run_training():
 			keep_prob = tf.placeholder(tf.float32)
 
 			tf_valid_dataset = tf.constant(valid_dataset)
-			tf_test_dataset = tf.constant(test_dataset)
+			# tf_test_dataset = tf.constant(test_dataset)
 
 		with tf.name_scope('Bias_and_weights_management'):
 			weightsDict = nn.bias_weights_creation(nb_hidden_nodes_1, nb_hidden_nodes_2)	
@@ -138,7 +140,7 @@ def run_training():
 			# Predictions for the training, validation, and test data.
 			train_prediction = tf.nn.softmax(logits)
 			valid_prediction = tf.nn.softmax(nn.model(tf_valid_dataset, weightsDict)[0])
-			test_prediction = tf.nn.softmax(nn.model(tf_test_dataset, weightsDict)[0])
+			# test_prediction = tf.nn.softmax(nn.model(tf_test_dataset, weightsDict)[0])
 
 
 		# -------------------------- #
@@ -177,12 +179,12 @@ def run_training():
 						print("Minibatch accuracy: %.1f%%" % nn.accuracy(predictions, batch_labels)[0])
 						print("Validation accuracy: %.1f%%" % nn.accuracy(valid_prediction.eval(feed_dict = {keep_prob:1.0}), valid_labels)[0])
 
-			finalaccuracy, mat_confusion, PPV, TPR = nn.accuracy(test_prediction.eval(feed_dict={keep_prob:1.0}), test_labels)
+			# finalaccuracy, mat_confusion, PPV, TPR = nn.accuracy(test_prediction.eval(feed_dict={keep_prob:1.0}), test_labels)
 			# print "\n AVEC DROPOUT\n"
-			print("Test accuracy: %.1f%%" % finalaccuracy)
-			print("\n\nConfusion matrix :\n" + str(mat_confusion))
-			print "\n PPV : " + str(PPV)
-			print "\n TPR : " + str(TPR)
+			# print("Test accuracy: %.1f%%" % finalaccuracy)
+			# print("\n\nConfusion matrix :\n" + str(mat_confusion))
+			# print "\n PPV : " + str(PPV)
+			# print "\n TPR : " + str(TPR)
 
 			if saveModel.rfind(".ckpt") != -1:
 				save_path = saver.save(session, saveModel)
@@ -193,7 +195,8 @@ def run_training():
 		
 
 def main(_):
-	run_training()
+	train_dataset, train_labels, valid_dataset, valid_labels = get_inputs(FLAGS.pickle_file)
+	run_training(train_dataset, train_labels, valid_dataset, valid_labels)
 
 if __name__ == '__main__':
     tf.app.run()
