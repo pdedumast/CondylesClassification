@@ -313,3 +313,12 @@ def reformat(dataset, labels):
 	dataset = dataset.reshape((-1, NUM_POINTS * NUM_FEATURES)).astype(np.float32)
 	labels = (np.arange(NUM_CLASSES) == labels[:,None]).astype(np.float32)
 	return dataset, labels
+
+
+## Reformat into a shape that's more adapted to the models we're going to train:
+#   - data as a flat matrix
+#   - labels as float 1-hot encodings
+def reformat_data(dataset):
+    dataset = dataset.reshape((-1, NUM_POINTS * NUM_FEATURES)).astype(np.float32)
+    return dataset
+
