@@ -93,20 +93,20 @@ def run_eval(data):
 def get_result(prediction):
     pred = np.argmax(prediction[0,:])
 
-    if pred == 0:
-    	result = "00"
-    elif pred == 1:
-    	result = "01"
-    elif pred == 2:
-    	result = "03"
-    elif pred == 3:
-    	result = "04"
-    elif pred == 4:
-    	result = "05"
-    elif pred == 5:
-    	result = "06-07"
-    return result
-
+    # if pred == 0:
+    # 	result = "00"
+    # elif pred == 1:
+    # 	result = "01"
+    # elif pred == 2:
+    # 	result = "03"
+    # elif pred == 3:
+    # 	result = "04"
+    # elif pred == 4:
+    # 	result = "05"
+    # elif pred == 5:
+    # 	result = "06-07"
+    # return result
+    return pred
 
 
 def main(_):
@@ -114,7 +114,8 @@ def main(_):
     prediction = run_eval(data)
     result = get_result(prediction)
     print "Shape : " + os.path.basename(inputFile)
-    print "Group predicted :" + result + "\n"
+    print "Group predicted :" + str(result) + "\n"
+    return result
 
 
 if __name__ == '__main__':
