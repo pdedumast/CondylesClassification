@@ -6,7 +6,7 @@ import tensorflow as tf
 import pandas as pd
 
 import neuralnetwork as nn
-
+import inputdata
 
 
 # ----------------------------------------------------------------------------- #
@@ -31,24 +31,7 @@ flags.DEFINE_integer('num_steps', 1001, 'Number of steps to run trainer.')
 flags.DEFINE_integer('batch_size', 10, 'Batch size.')
 flags.DEFINE_string('pickle_file', 'condyles.pickle','Path to the pickle file containing datasets')
 
-# ---------------------------------------------------------------------------- #
-# Reoad the data generated in pickleData.py
 
-
-with open(FLAGS.pickle_file, 'rb') as f:
-	save = pickle.load(f)
-	test_dataset = save['test_dataset']
-	test_labels = save['test_labels']
-	del save  # hint to help gc free up memory
-	print('Test set', test_dataset.shape, test_labels.shape)
-
-nbData = len(test_dataset[:, 0, 0])
-test_dataset = test_dataset.reshape((-1, nn.NUM_FEATURES * nn.NUM_POINTS)).astype(np.float32)
-predictions = np.ndarray(shape=(nbData, nn.NUM_CLASSES), dtype=np.float32)
-
-test_dataset, test_labels = nn.reformat(test_dataset, test_labels)
-
-print('Test set', test_dataset.shape, test_labels.shape)
 
 
 # ----------------------------------------------------------------------------- #
@@ -57,8 +40,28 @@ print('Test set', test_dataset.shape, test_labels.shape)
 # 																				#
 # ----------------------------------------------------------------------------- #
 # 
-def run_test():
+def get_input(pickle_file):
+	# ---------------------------------------------------------------------------- #
+	# Reoad the data generated in pickleData.py
+	with open(pickle_file, 'rb') as f:
+		save = pickle.load(f)
+		test_dataset = save['test_dataset']
+		test_labels = save['test_labels']
+		del save  # hint to help gc free up memory
+		print('Test set', test_dataset.shape, test_labels.shape)
 
+	nbData = len(test_dataset[:, 0, 0])
+	test_dataset = test_dataset.reshape((-1, inputdata.NUM_FEATURES * inputdata.NUM_POINTS)).astype(np.float32)
+	predictions = np.ndarray(shape=(nbData, inputdata.NUM_CLASSES), dtype=np.float32)
+
+	test_dataset, test_labels = inputdata.reformat(test_dataset, test_labels)
+
+	print('Test set', test_dataset.shape, test_labels.shape)
+	return test_dataset, test_labels
+
+
+
+def run_test(test_dataset, test_labels):
 	# Construct the graph
 	graph = tf.Graph()
 	with graph.as_default():
@@ -98,7 +101,8 @@ def run_test():
 
 
 def main(_):
-	run_test()
+	test_dataset, test_labels = get_input(FLAGS.pickle_file)
+	run_test(test_dataset, test_labels)
 
 if __name__ == '__main__':
     tf.app.run()
