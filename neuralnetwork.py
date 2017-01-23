@@ -2,7 +2,7 @@ import os
 import numpy as np
 import tensorflow as tf
 import pandas as pd
-import vtk
+# import vtk
 import inputdata
 # from six.moves import cPickle as pickle
 

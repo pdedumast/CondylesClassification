@@ -8,7 +8,7 @@ import inputdata
 
 
 # Location for each group files
-valid_train = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/surfSPHARM/5Groups-Simulated-Feat-duplicate/"
+valid_train = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/surfSPHARM/5Groups-Simulated-Feat-1/"
 # valid_train = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/surfSPHARM/5Groups-Feat/"
 
 tests = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/surfSPHARM/5Groups-Feat/"

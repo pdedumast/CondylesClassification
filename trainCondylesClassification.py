@@ -4,12 +4,8 @@ from six.moves import cPickle as pickle
 import numpy as np
 import tensorflow as tf
 # import pandas as pd
-
 import neuralnetwork as nn
 import inputdata
-
-
-saveModel = 'weights_5Groups.ckpt'
 
 
 flags = tf.app.flags
@@ -19,12 +15,19 @@ flags.DEFINE_float('lambda_reg', 0.01, 'Regularization lambda factor.')
 flags.DEFINE_integer('num_epochs', 2, 'Number of epochs to run trainer.')
 flags.DEFINE_integer('num_steps', 1001, 'Number of steps to run trainer.')
 flags.DEFINE_integer('batch_size', 10, 'Batch size.')
-flags.DEFINE_string('pickle_file', 'condyles.pickle','Path to the pickle file containing datasets')
-# flags.DEFINE_string('checkpoint_dir', '/tmp/sunny_train',
-#                            """Directory where to write model checkpoints.""")
 
 
+import argparse
 
+parser = argparse.ArgumentParser()
+parser.add_argument('-inputPickle', action='store', dest='pickle_file', help='Input file to classify', 
+                    default = "/Users/prisgdd/Documents/Projects/CNN/CondylesClassification/condyles.pickle")
+
+parser.add_argument('-saveModelPath', action='store', dest='saveModelPath', help='Path to the saved model to use', default='weights_5Groups.ckpt')
+
+args = parser.parse_args()
+pickle_file = args.pickle_file
+saveModelPath = args.saveModelPath
 
 
 # ----------------------------------------------------------------------------- #
@@ -33,7 +36,7 @@ flags.DEFINE_string('pickle_file', 'condyles.pickle','Path to the pickle file co
 def get_inputs(pickle_file):
 
 	# Reoad the data generated in pickleData.py
-	with open(FLAGS.pickle_file, 'rb') as f:
+	with open(pickle_file, 'rb') as f:
 		save = pickle.load(f)
 	  	train_dataset = save['train_dataset']
 	  	train_labels = save['train_labels']
@@ -186,8 +189,8 @@ def run_training(train_dataset, train_labels, valid_dataset, valid_labels):
 			# print "\n PPV : " + str(PPV)
 			# print "\n TPR : " + str(TPR)
 
-			if saveModel.rfind(".ckpt") != -1:
-				save_path = saver.save(session, saveModel)
+			if saveModelPath.rfind(".ckpt") != -1:
+				save_path = saver.save(session, saveModelPath)
 				print("Model saved in file: %s" % save_path)
 			else:
 				raise Exception("Impossible to save train model at %s. Must be a .cpkt file" % saveModelPath)
@@ -195,7 +198,7 @@ def run_training(train_dataset, train_labels, valid_dataset, valid_labels):
 		
 
 def main(_):
-	train_dataset, train_labels, valid_dataset, valid_labels = get_inputs(FLAGS.pickle_file)
+	train_dataset, train_labels, valid_dataset, valid_labels = get_inputs(pickle_file)
 	run_training(train_dataset, train_labels, valid_dataset, valid_labels)
 
 if __name__ == '__main__':

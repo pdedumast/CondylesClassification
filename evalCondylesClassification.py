@@ -12,7 +12,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-inputFile', action='store', dest='inputFile', help='Input file to classify', 
                     default = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/surfSPHARM/5Groups-Feat/G00/34551376_Left_pp_surfSPHARM-Features.vtk")
 
-parser.add_argument('-saveModelPath', action='store', dest='saveModelPath', help='Path to the saved model to use', default='weights_5Groups.ckpt')
+parser.add_argument('-saveModelPath', action='store', dest='saveModelPath', help='Path to the saved model to use', default='/Users/prisgdd/Desktop/weights_5Groups-surfSPHARM.ckpt')
 
 args = parser.parse_args()
 inputFile = args.inputFile
