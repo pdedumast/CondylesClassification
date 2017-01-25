@@ -8,12 +8,14 @@ import neuralnetwork as nn
 import inputdata
 
 
+print "VERSION ::: " + str(tf.__version__)
+
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 flags.DEFINE_float('learning_rate', 0.0005, 'Initial learning rate.')
 flags.DEFINE_float('lambda_reg', 0.01, 'Regularization lambda factor.')
 flags.DEFINE_integer('num_epochs', 2, 'Number of epochs to run trainer.')
-flags.DEFINE_integer('num_steps', 1001, 'Number of steps to run trainer.')
+flags.DEFINE_integer('num_steps', 101, 'Number of steps to run trainer.')
 flags.DEFINE_integer('batch_size', 10, 'Batch size.')
 
 
@@ -23,7 +25,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-inputPickle', action='store', dest='pickle_file', help='Input file to classify', 
                     default = "/Users/prisgdd/Documents/Projects/CNN/CondylesClassification/condyles.pickle")
 
-parser.add_argument('-saveModelPath', action='store', dest='saveModelPath', help='Path to the saved model to use', default='weights_5Groups.ckpt')
+parser.add_argument('-saveModelPath', action='store', dest='saveModelPath', help='Path to the saved model to use', default='weights_5Groups')
 
 args = parser.parse_args()
 pickle_file = args.pickle_file
@@ -135,8 +137,8 @@ def run_training(train_dataset, train_labels, valid_dataset, valid_labels):
 			# optimizer = tf.train.AdagradOptimizer(FLAGS.learning_rate).minimize(loss)
 		
 		# tf.tensor_summary("W_fc1", weightsDict['W_fc1'])
-		tf.scalar_summary("Loss", loss)
-		summary_op = tf.merge_all_summaries()
+		tf.summary.scalar("Loss", loss)
+		summary_op = tf.summary.merge_all()
 		saver = tf.train.Saver(weightsDict)
 			
 		with tf.name_scope('Predictions'):
@@ -151,11 +153,11 @@ def run_training(train_dataset, train_labels, valid_dataset, valid_labels):
 		# -------------------------- #
 		# 
 		with tf.Session(graph=graph) as session:
-			tf.initialize_all_variables().run()
+			tf.global_variables_initializer().run()
 			print("Initialized")
 
-			 # create log writer object
-			writer = tf.train.SummaryWriter('./train', graph=graph)
+			# create log writer object
+			writer = tf.summary.FileWriter('./train', graph=graph)
 
 			for epoch in range(0, FLAGS.num_epochs):
 				for step in range(FLAGS.num_steps):
@@ -170,6 +172,7 @@ def run_training(train_dataset, train_labels, valid_dataset, valid_labels):
 					# and the value is the numpy array to feed to it.
 					feed_dict = {tf_train_dataset : batch_data, tf_train_labels : batch_labels, keep_prob:0.7}
 					_, l, predictions, summary = session.run([optimizer, loss, train_prediction, summary_op], feed_dict=feed_dict)
+					# _, l, predictions = session.run([optimizer, loss, train_prediction], feed_dict=feed_dict)
 
 
 					# write log
@@ -189,12 +192,13 @@ def run_training(train_dataset, train_labels, valid_dataset, valid_labels):
 			# print "\n PPV : " + str(PPV)
 			# print "\n TPR : " + str(TPR)
 
-			if saveModelPath.rfind(".ckpt") != -1:
-				save_path = saver.save(session, saveModelPath)
-				print("Model saved in file: %s" % save_path)
-			else:
-				raise Exception("Impossible to save train model at %s. Must be a .cpkt file" % saveModelPath)
-
+			# if saveModelPath.rfind(".ckpt") != -1:
+				# save_path = saver.save(session, saveModelPath)
+				# print("Model saved in file: %s" % save_path)
+			# else:
+				# raise Exception("Impossible to save train model at %s. Must be a .cpkt file" % saveModelPath)
+			save_path = saver.save(session, saveModelPath, write_meta_graph=True)
+			print("Model saved in file: %s" % save_path)
 		
 
 def main(_):
