@@ -44,8 +44,8 @@ def get_inputs(pickle_file):
 	  	train_labels = save['train_labels']
 	  	valid_dataset = save['valid_dataset']
 	  	valid_labels = save['valid_labels']
-	  	# test_dataset = save['test_dataset']
-	  	# test_labels = save['test_labels']
+	  	test_dataset = save['test_dataset']
+	  	test_labels = save['test_labels']
 	  	del save  # hint to help gc free up memory
 	  	print('Training set', train_dataset.shape, train_labels.shape)
 	  	print('Validation set', valid_dataset.shape, valid_labels.shape)
@@ -82,7 +82,7 @@ print "batch_size = " + str(FLAGS.batch_size) + "\n"
 # 
 # ----------------------------------------------------------------------------- #
 
-def placeholder_inputs(batch_size):
+def placeholder_inputs(batch_size, name=0):
 	"""Generate placeholder variables to represent the input tensors.
 	These placeholders are used as inputs by the rest of the model building
 	code and will be fed from the downloaded data in the .run() loop, below.
@@ -95,7 +95,7 @@ def placeholder_inputs(batch_size):
 	# Note that the shapes of the placeholders match the shapes of the full
 	# image and label tensors, except the first dimension is now batch_size
 	# rather than the full size of the train or test data sets.
-	tf_train_dataset = tf.placeholder(tf.float32, shape=(batch_size, inputdata.NUM_POINTS * inputdata.NUM_FEATURES))
+	tf_train_dataset = tf.placeholder(tf.float32, shape=(batch_size, inputdata.NUM_POINTS * inputdata.NUM_FEATURES), name=name)
 	tf_train_labels = tf.placeholder(tf.int32, shape=(batch_size, inputdata.NUM_CLASSES))
 	return tf_train_dataset, tf_train_labels
 
@@ -105,24 +105,30 @@ def placeholder_inputs(batch_size):
 # 																				#
 # ----------------------------------------------------------------------------- #
 # 
-
-
-def run_training(train_dataset, train_labels, valid_dataset, valid_labels):
+def main(_):
+	train_dataset, train_labels, valid_dataset, valid_labels = get_inputs(pickle_file)
+	# run_training(train_dataset, train_labels, valid_dataset, valid_labels)
 
 	# Construct the graph
 	graph = tf.Graph()
 	with graph.as_default():
 		# Input data.
 		with tf.name_scope('Inputs_management'):
-			tf_train_dataset, tf_train_labels = placeholder_inputs(FLAGS.batch_size)
+			# tf_train_dataset, tf_train_labels = placeholder_inputs(FLAGS.batch_size, name='data')
+			tf_train_dataset = tf.placeholder(tf.float32, shape=(FLAGS.batch_size, inputdata.NUM_POINTS * inputdata.NUM_FEATURES), name='tf_train_dataset')
+			tf_train_labels = tf.placeholder(tf.int32, shape=(FLAGS.batch_size, inputdata.NUM_CLASSES), name='tf_train_labels')
 
-			keep_prob = tf.placeholder(tf.float32)
+			keep_prob = tf.placeholder(tf.float32, name='keep_prob')
 
-			tf_valid_dataset = tf.constant(valid_dataset)
+			tf_valid_dataset = tf.constant(valid_dataset, name="tf_valid_dataset")
+
+			# tf_data = tf.Variable(tf.zeros([1,inputdata.NUM_POINTS * inputdata.NUM_FEATURES]))
+			tf_data = tf.placeholder(tf.float32, shape=(1,inputdata.NUM_POINTS * inputdata.NUM_FEATURES), name="input")
 			# tf_test_dataset = tf.constant(test_dataset)
 
 		with tf.name_scope('Bias_and_weights_management'):
 			weightsDict = nn.bias_weights_creation(nb_hidden_nodes_1, nb_hidden_nodes_2)	
+		
 		# Training computation.
 		with tf.name_scope('Training_computations'):
 			logits, weightsDict = nn.model(tf_train_dataset, weightsDict)
@@ -140,11 +146,14 @@ def run_training(train_dataset, train_labels, valid_dataset, valid_labels):
 		tf.summary.scalar("Loss", loss)
 		summary_op = tf.summary.merge_all()
 		saver = tf.train.Saver(weightsDict)
+
 			
 		with tf.name_scope('Predictions'):
 			# Predictions for the training, validation, and test data.
 			train_prediction = tf.nn.softmax(logits)
-			valid_prediction = tf.nn.softmax(nn.model(tf_valid_dataset, weightsDict)[0])
+			valid_prediction = tf.nn.softmax(nn.model(tf_valid_dataset, weightsDict)[0], name="valid_prediction")
+
+			data_pred = tf.nn.softmax(nn.model(tf_data, weightsDict)[0], name="output")
 			# test_prediction = tf.nn.softmax(nn.model(tf_test_dataset, weightsDict)[0])
 
 
@@ -192,18 +201,11 @@ def run_training(train_dataset, train_labels, valid_dataset, valid_labels):
 			# print "\n PPV : " + str(PPV)
 			# print "\n TPR : " + str(TPR)
 
-			# if saveModelPath.rfind(".ckpt") != -1:
-				# save_path = saver.save(session, saveModelPath)
-				# print("Model saved in file: %s" % save_path)
-			# else:
-				# raise Exception("Impossible to save train model at %s. Must be a .cpkt file" % saveModelPath)
 			save_path = saver.save(session, saveModelPath, write_meta_graph=True)
 			print("Model saved in file: %s" % save_path)
-		
 
-def main(_):
-	train_dataset, train_labels, valid_dataset, valid_labels = get_inputs(pickle_file)
-	run_training(train_dataset, train_labels, valid_dataset, valid_labels)
+			# return data_pred
+		
 
 if __name__ == '__main__':
     tf.app.run()

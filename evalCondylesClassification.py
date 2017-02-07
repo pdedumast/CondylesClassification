@@ -29,6 +29,7 @@ elif nn.NUM_HIDDEN_LAYERS == 2:
 
 
 
+
 # ----------------------------------------------------------------------------- #
 # 																				#
 # 						   Passons aux choses serieuses							#
@@ -79,10 +80,9 @@ def run_eval(data):
         with tf.name_scope('Restore_weights'):
             saver = tf.train.Saver(weightsDict)
 
-
     	with tf.Session(graph=graph) as session:
     		saver.restore(session, saveModelPath)
-    		feed_dict = {tf_data: data}
+    		feed_dict = {tf_valid_dataset: data}
     		prediction = session.run(test_prediction, feed_dict=feed_dict)
     return prediction
 
@@ -91,28 +91,29 @@ def run_eval(data):
 # ---- RESULTS ---- #
 # ----------------- #
 def get_result(prediction):
-    pred = np.argmax(prediction[0,:])
-
-    # if pred == 0:
-    # 	result = "00"
-    # elif pred == 1:
-    # 	result = "01"
-    # elif pred == 2:
-    # 	result = "03"
-    # elif pred == 3:
-    # 	result = "04"
-    # elif pred == 4:
-    # 	result = "05"
-    # elif pred == 5:
-    # 	result = "06-07"
-    # return result
-    return pred
+    return np.argmax(prediction[0,:])
 
 
 def main(_):
-    data = get_input(inputFile)
-    prediction = run_eval(data)
-    result = get_result(prediction)
+
+    # Create session, and import existing graph
+    myData = get_input(inputFile)
+    session = tf.InteractiveSession()
+    new_saver = tf.train.import_meta_graph('./weights_5Groups.meta')
+    new_saver.restore(session, './weights_5Groups')
+    graph = tf.Graph().as_default()
+
+    # listTensor =[tensor.name for tensor in tf.get_default_graph().as_graph_def().node]
+    
+    # Get useful tensor in the graph
+    # tf_data = session.graph.get_collection(name="input:0", scope="Inputs_management") 
+    tf_data = session.graph.get_tensor_by_name("Inputs_management/input:0")
+    data_pred = session.graph.get_tensor_by_name("Predictions/output:0")
+
+    feed_dict = {tf_data: myData}
+    data_pred = session.run(data_pred, feed_dict=feed_dict)
+    
+    result = get_result(data_pred)
     print "Shape : " + os.path.basename(inputFile)
     print "Group predicted :" + str(result) + "\n"
     return result
