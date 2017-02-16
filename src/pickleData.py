@@ -1,20 +1,20 @@
 import numpy as np
 import os
-# import vtk
 from six.moves import cPickle as pickle
 import neuralnetwork as nn
 import inputdata 
+
 # ----------------------------------------------------------------------------- #
 
+arser = argparse.ArgumentParser()
+parser.add_argument('-valid_train', action='store', dest='valid_train', help='Valid/Train dataset', 
+                    default = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/surfSPHARM/5Groups-Feat/")
+parser.add_argument('-tests', action='store', dest='tests', help='Test dataset', 
+                    default="/Users/prisgdd/Documents/Projects/CNN/DataPriscille/surfSPHARM/5Groups-Feat/")
 
-# Location for each group files
-valid_train = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/surfSPHARM/5Groups-Simulated-Feat-1/"
-# valid_train = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/surfSPHARM/5Groups-Feat/"
-
-tests = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/surfSPHARM/5Groups-Feat/"
-# tests = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/surfSPHARM/5Groups-Feat/"
-# tests = "/Users/prisgdd/Documents/Projects/CNN/DataPriscille/"
-
+args = parser.parse_args()
+valid_train= args.valid_train
+tests = args.tests
 
 train_size = 256
 valid_size = 32
@@ -41,8 +41,6 @@ valid_dataset, valid_labels = inputdata.randomize(valid_dataset, valid_labels)
 
 # ----------------------------------------------------------------------------- #
 # Save the data for later reuse
-
-
 pickle_file = 'condyles.pickle'
 
 try:

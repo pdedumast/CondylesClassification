@@ -1,15 +1,21 @@
 import os
 import sys
 import subprocess
-# import qt
-
 
 CondylesFeaturesExtractor = "/Users/prisgdd/Documents/Projects/CNN/CondylesFeaturesExtractor-build/src/bin/condylesfeaturesextractor"
 
-meshDir = "/Users/prisgdd/Documents/Projects/CNN/DataVTK/G07"
-outputDir = "/Users/prisgdd/Documents/Projects/CNN/outputVTK-CondFeatExt/G07"
-meanGroup = "/Users/prisgdd/Documents/Projects/CNN/drive-download-20161123T180828Z"
+parser = argparse.ArgumentParser()
+parser.add_argument('-meshDir', action='store', dest='meshDir', help='Input file to classify', 
+                    default = "/Users/prisgdd/Desktop/TestPipeline/inputGroups/Mesh")
+parser.add_argument('-outputDir', action='store', dest='outputDir', help='Directory for output files', 
+					default="/Users/prisgdd/Desktop/TestPipeline/outputSurfRemesh")
+parser.add_argument('-meanGroup', action='store', dest='meanGroup', help='Directory with all the mean shapes', 
+					default="/Users/prisgdd/Documents/Projects/CNN/drive-download-20161123T180828Z")
 
+args = parser.parse_args()
+meshDir= args.meshDir
+outputDir = args.outputDir
+meanGroup = args.meanGroup
 
 # Verify directory integrity
 if not os.path.isdir(meshDir) or not os.path.isdir(outputDir):
@@ -38,19 +44,6 @@ for i in range(0,len(listMesh)):
 	command.append(meanGroup)	
 
 	subprocess.call(command)
-
-## Process to run SurfRemesh
-# process = qt.QProcess()
-# process.setProcessChannelMode(qt.QProcess.MergedChannels)
-
-# process.start(SRemesh, arguments)
-# process.waitForStarted()
-# # print "state: " + str(self.process.state())
-# process.waitForFinished(-1)
-# # print "error: " + str(self.process.error())
-
-# processOutput = str(self.process.readAll())
-
 
 
 
