@@ -150,7 +150,6 @@ class neuralNetwork():
 	
 	def loss(self, logits, tf_train_labels, lambda_reg, weightsDict):
 		regularization = True
-		print "lama"
 		if not regularization:
 			loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits = logits, labels = tf_train_labels))
 		else:

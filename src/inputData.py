@@ -1,6 +1,6 @@
 import os
 import numpy as np
-import vtk, slicer
+import vtk
 import pickle
 
 
