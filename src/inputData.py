@@ -1,7 +1,7 @@
 import os
 import numpy as np
-import vtk
-from six.moves import cPickle as pickle
+import vtk, slicer
+import pickle
 
 
 class inputData():
@@ -16,7 +16,7 @@ class inputData():
 
     #
     # Function get_folder_classes_list(datasetPath)
-    #   For a given folder, return the list of subfolders
+    # 	For a given folder, return the list of subfolders
     #
     def get_folder_classes_list(self, datasetPath):
         dataset_folders = [os.path.join(datasetPath, d) for d in sorted(os.listdir(datasetPath))]
