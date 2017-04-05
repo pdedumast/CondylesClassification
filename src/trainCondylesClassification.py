@@ -7,6 +7,8 @@ import neuralNetwork as nn
 import inputData
 import argparse
 import json
+import shutil
+import zipfile
 
 # ----------------------------------------------------------------------------- #
 #																				#
@@ -153,6 +155,13 @@ def run_training(train_dataset, train_labels, valid_dataset, valid_labels, test_
     
     return finalaccuracy
 
+def exportModelNetwork(zipPath):
+
+	# Zipper tout ca :: base_name = la ou on veut zipper+zipname
+	shutil.make_archive(base_name = zipPath, format = 'zip', root_dir = os.path.dirname(zipPath), base_dir = os.path.basename(zipPath))
+
+	return
+
 
 
 # ----------------------------------------------------------------------------- #
@@ -166,85 +175,117 @@ def main(_):
 	  
 	# Get the arguments from the command line
 	parser = argparse.ArgumentParser()
-	parser.add_argument('-inputPickle', action='store', dest='pickle_file', help='Input file to classify', 
+	parser.add_argument('-inputZip', action='store', dest='inputZip', help='Input zip file which contains the datasets & the parameters for the classifier', 
 	                    default = "")
 
-	parser.add_argument('-saveModelPath', action='store', dest='saveModelPath', help='Path to the saved model to use', default='weights_5Groups')
+	# parser.add_argument('-saveModelPath', action='store', dest='saveModelPath', help='Path to the saved model to use', default='weights_5Groups')
 
-	parser.add_argument('-jsonFile', action='store', dest='jsonFile', help='JSON file which contains all the parameters to use the network', default='')
+	# parser.add_argument('-jsonFile', action='store', dest='jsonFile', help='JSON file which contains all the parameters to use the network', default='')
 
 	args = parser.parse_args()
-	pickle_file = args.pickle_file
-	saveModelPath = args.saveModelPath
-	jsonFile = args.jsonFile
+	# pickle_file = args.pickle_file
+	# saveModelPath = args.saveModelPath
+	# jsonFile = args.jsonFile
+	inputZip = args.inputZip
+	basedir = os.path.dirname(inputZip)
+	nameDir = os.path.splitext(os.path.basename(inputZip))[0]
 
+	networkDir = os.path.join(basedir, nameDir)
+	print "networkDir : " + networkDir
+
+	if os.path.isdir(networkDir):
+		shutil.rmtree(networkDir)
+	os.mkdir(networkDir) 
+
+	# Unpack archive
+	with zipfile.ZipFile(inputZip) as zf:
+		zf.extractall(basedir)
+
+	jsonFile = os.path.join(networkDir, 'classifierInfo.json')
+	saveModelPath = os.path.join(networkDir, 'CondylesClassifier')
+	pickle_file = os.path.join(networkDir, 'datasets.pickle')
 	#
 	# Create a network for the classification
 	#
 	with open(jsonFile) as f:    
 		jsonDict = json.load(f)
 
-	classifier = nn.neuralNetwork()
 
+	# In case our JSON file doesnt contain a valid Classifier
 	if not jsonDict.has_key('CondylesClassifier'):
 		print "Error: Couldn't parameterize the network."
 		print "There is no 'CondylesClassifier' model."
 		return 0
+
+	# If we have the Classifier, set all parameters for the network
+	classifier = nn.neuralNetwork()
+
+	# Essential parameters
+	if 'NUM_CLASSES' in jsonDict['CondylesClassifier']:
+		classifier.NUM_CLASSES = jsonDict['CondylesClassifier']['NUM_CLASSES'] 
 	else:
-		if 'NUM_CLASSES' in jsonDict['CondylesClassifier']:
-			classifier.NUM_CLASSES = jsonDict['CondylesClassifier']['NUM_CLASSES'] 
-		else:
-			print "Missing NUM_CLASSES"
-			return 0
-		
-		if 'NUM_POINTS' in jsonDict['CondylesClassifier']:
-			classifier.NUM_POINTS = jsonDict['CondylesClassifier']['NUM_POINTS']
-		else:
-			print "Missing NUM_POINTS"
-			return 0
+		print "Missing NUM_CLASSES"
+		accuracy = -1
+	
+	if 'NUM_POINTS' in jsonDict['CondylesClassifier']:
+		classifier.NUM_POINTS = jsonDict['CondylesClassifier']['NUM_POINTS']
+	else:
+		print "Missing NUM_POINTS"
+		accuracy = -1
 
-		if 'NUM_FEATURES' in jsonDict['CondylesClassifier']:
-			classifier.NUM_FEATURES = jsonDict['CondylesClassifier']['NUM_FEATURES']
-		else:
-			print "Missing NUM_FEATURES"
-			return 0
+	if 'NUM_FEATURES' in jsonDict['CondylesClassifier']:
+		classifier.NUM_FEATURES = jsonDict['CondylesClassifier']['NUM_FEATURES']
+	else:
+		print "Missing NUM_FEATURES"
+		accuracy = -1
 
-		if 'learning_rate' in jsonDict['CondylesClassifier']:
-			classifier.learning_rate = jsonDict['CondylesClassifier']['learning_rate']
-		else: 
-			classifier.learning_rate = 0.0005
-		
-		if 'lambda_reg' in jsonDict['CondylesClassifier']:
-			classifier.lambda_reg = jsonDict['CondylesClassifier']['lambda_reg']
-		else:
-			classifier.lambda_reg = 0.01
-		
-		if 'num_epochs' in jsonDict['CondylesClassifier']:
-			classifier.num_epochs = jsonDict['CondylesClassifier']['num_epochs']
-		else:
-			classifier.num_epochs = 2
-		
-		if 'num_steps'	in jsonDict['CondylesClassifier']:
-			classifier.num_steps = jsonDict['CondylesClassifier']['num_steps']
-		else:
-			classifier.num_steps =  11
-		
-		if 'batch_size' in jsonDict['CondylesClassifier']:
-			classifier.batch_size = jsonDict['CondylesClassifier']['batch_size']
-		else:
-			classifier.batch_size = 10
+	# TODO: Manage case with incomplete parameterization of the classifier network
 
-		if 'NUM_HIDDEN_LAYERS' in jsonDict['CondylesClassifier']:
-			classifier.NUM_HIDDEN_LAYERS = jsonDict['CondylesClassifier']['NUM_HIDDEN_LAYERS']
-		else:
-			classifier.NUM_HIDDEN_LAYERS = 2
-		
 
-		train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels = get_inputs(pickle_file, classifier)
+	# Specific parameters
+	if 'learning_rate' in jsonDict['CondylesClassifier']:
+		classifier.learning_rate = jsonDict['CondylesClassifier']['learning_rate']
+	else: 
+		classifier.learning_rate = 0.0005
+	
+	if 'lambda_reg' in jsonDict['CondylesClassifier']:
+		classifier.lambda_reg = jsonDict['CondylesClassifier']['lambda_reg']
+	else:
+		classifier.lambda_reg = 0.01
+	
+	if 'num_epochs' in jsonDict['CondylesClassifier']:
+		classifier.num_epochs = jsonDict['CondylesClassifier']['num_epochs']
+	else:
+		classifier.num_epochs = 2
+	
+	if 'num_steps'	in jsonDict['CondylesClassifier']:
+		classifier.num_steps = jsonDict['CondylesClassifier']['num_steps']
+	else:
+		classifier.num_steps =  11
+	
+	if 'batch_size' in jsonDict['CondylesClassifier']:
+		classifier.batch_size = jsonDict['CondylesClassifier']['batch_size']
+	else:
+		classifier.batch_size = 10
 
-		accuracy = run_training(train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels, saveModelPath, classifier)
+	if 'NUM_HIDDEN_LAYERS' in jsonDict['CondylesClassifier']:
+		classifier.NUM_HIDDEN_LAYERS = jsonDict['CondylesClassifier']['NUM_HIDDEN_LAYERS']
+	else:
+		classifier.NUM_HIDDEN_LAYERS = 2
 
-	return accuracy
+
+	train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels = get_inputs(pickle_file, classifier)
+
+	accuracy = run_training(train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels, saveModelPath, classifier)
+	jsonDict['CondylesClassifier']['accuracy'] = accuracy
+
+
+	# Zip all those files together
+	zipPath = networkDir
+	exportModelNetwork(zipPath)
+	
+	return 
+
 
 if __name__ == '__main__':
 	tf.app.run()
