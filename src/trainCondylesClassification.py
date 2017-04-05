@@ -162,7 +162,7 @@ def run_training(train_dataset, train_labels, valid_dataset, valid_labels, test_
 # ----------------------------------------------------------------------------- #
 # 
 def main(_):
-	print "\nTensorFlow current installed version ::: " + str(tf.__version__)
+	print "\nTensorFlow current version : " + str(tf.__version__) + "\n"
 	  
 	# Get the arguments from the command line
 	parser = argparse.ArgumentParser()
@@ -186,17 +186,28 @@ def main(_):
 
 	classifier = nn.neuralNetwork()
 
-	if not len(jsonDict.keys()) == 1:
-		print "Il y a 0 ou >1 model dans " + str(jsonFile)
+	if not jsonDict.has_key('CondylesClassifier'):
+		print "Error: Couldn't parameterize the network."
+		print "There is no 'CondylesClassifier' model."
+		return 0
 	else:
 		if 'NUM_CLASSES' in jsonDict['CondylesClassifier']:
 			classifier.NUM_CLASSES = jsonDict['CondylesClassifier']['NUM_CLASSES'] 
+		else:
+			print "Missing NUM_CLASSES"
+			return 0
 		
 		if 'NUM_POINTS' in jsonDict['CondylesClassifier']:
 			classifier.NUM_POINTS = jsonDict['CondylesClassifier']['NUM_POINTS']
-		
+		else:
+			print "Missing NUM_POINTS"
+			return 0
+
 		if 'NUM_FEATURES' in jsonDict['CondylesClassifier']:
 			classifier.NUM_FEATURES = jsonDict['CondylesClassifier']['NUM_FEATURES']
+		else:
+			print "Missing NUM_FEATURES"
+			return 0
 
 		if 'learning_rate' in jsonDict['CondylesClassifier']:
 			classifier.learning_rate = jsonDict['CondylesClassifier']['learning_rate']
@@ -211,25 +222,25 @@ def main(_):
 		if 'num_epochs' in jsonDict['CondylesClassifier']:
 			classifier.num_epochs = jsonDict['CondylesClassifier']['num_epochs']
 		else:
-			classifier.num_epochs = 3
-		classifier.num_steps =  1001
-		classifier.batch_size = 10
+			classifier.num_epochs = 2
+		
+		if 'num_steps'	in jsonDict['CondylesClassifier']:
+			classifier.num_steps = jsonDict['CondylesClassifier']['num_steps']
+		else:
+			classifier.num_steps =  11
+		
+		if 'batch_size' in jsonDict['CondylesClassifier']:
+			classifier.batch_size = jsonDict['CondylesClassifier']['batch_size']
+		else:
+			classifier.batch_size = 10
 
-		classifier.NUM_HIDDEN_LAYERS = 2
+		if 'NUM_HIDDEN_LAYERS' in jsonDict['CondylesClassifier']:
+			classifier.NUM_HIDDEN_LAYERS = jsonDict['CondylesClassifier']['NUM_HIDDEN_LAYERS']
+		else:
+			classifier.NUM_HIDDEN_LAYERS = 2
 		
 
-
-		# Set le path pour le network
-		# tempPath = slicer.app.temporaryPath
-		# networkDir = os.path.join(tempPath, "Network")
-		# if os.path.isdir(networkDir):
-		#     shutil.rmtree(networkDir)
-		# os.mkdir(networkDir) 
-		networkDir = '/Users/prisgdd/Desktop/TestRipou'
-
-
 		train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels = get_inputs(pickle_file, classifier)
-		# saveModelPath = os.path.join(networkDir, modelName)
 
 		accuracy = run_training(train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels, saveModelPath, classifier)
 
